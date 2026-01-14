@@ -1104,13 +1104,6 @@ section {
   flex-direction: column;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-  color: var(--color-black);
-}
-
 .modal-content-text {
   font-size: 14px;
   line-height: 1.5;
