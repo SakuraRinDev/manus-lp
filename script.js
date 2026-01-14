@@ -53,7 +53,7 @@ function initScrollAnimations() {
 // Smooth scrolling for anchor links
 function initSmoothScroll() {
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
+    anchor.addEventListener('click', function (e) {
       e.preventDefault();
       const targetId = this.getAttribute('href');
       if (targetId === '#') return;
@@ -180,7 +180,7 @@ initParallax();
 // Configuration
 const GALLERY_CONFIG = {
   // Google Apps Script Web App URL (set after deployment)
-  API_URL: '',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwdru_w7eVCrobH1B6j1hCBOrXflJTIB9W9kG9mEJ35v_FcAbkMNfZ10bSlmg2jTqyB/exec',
   // Category mapping
   categories: {
     'apps': 'Apps & Tools',
@@ -190,7 +190,7 @@ const GALLERY_CONFIG = {
     'others': 'Others'
   },
   // Demo mode - set to true to show sample data when API_URL is empty
-  demoMode: true
+  demoMode: false
 };
 
 // Sample data for demo mode
