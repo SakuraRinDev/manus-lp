@@ -2,27 +2,25 @@
 // Google Apps Script for Manus Works Gallery
 // ========================================
 //
+// フォームフィールド（回答がスプレッドシートに記録される順序）:
+// 0: タイムスタンプ
+// 1: メールアドレス
+// 2: ニックネーム（author）
+// 3: X（旧Twitter）アカウント名（twitter）
+// 4: 作品名（title）
+// 5: 作品のカテゴリ（category）
+// 6: 作品の概要・アピールポイント（description）
+// 7: 作品のスクリーンショット（imageUrl - Google Driveリンク）
+// 8: 作品のリンク（workUrl）
+//
 // Setup Instructions:
-// 1. Create a Google Form with the following fields:
-//    - 作品名 (Short answer, Required)
-//    - 作者名 (Short answer, Required)
-//    - カテゴリ (Dropdown: Apps & Tools, Documents, Data & Analysis, Creative, Others)
-//    - 説明 (Paragraph)
-//    - 画像URL (Short answer)
-//    - 作品URL (Short answer)
-//    - ManusへのリンクURL (Short answer)
-//
-// 2. Link the form to a Google Spreadsheet
-//
-// 3. Open the Spreadsheet > Extensions > Apps Script
-//
-// 4. Copy and paste this code into Code.gs
-//
-// 5. Deploy > New Deployment > Web App
+// 1. フォームに紐づいたスプレッドシートを開く
+// 2. Extensions > Apps Script を開く
+// 3. このコードを Code.gs に貼り付け
+// 4. Deploy > New Deployment > Web App
 //    - Execute as: Me
 //    - Who has access: Anyone
-//
-// 6. Copy the Web App URL and set it in script.js GALLERY_CONFIG.API_URL
+// 5. Web App URLをコピーし、script.js の GALLERY_CONFIG.API_URL に設定
 //
 
 function doGet(e) {
@@ -52,20 +50,19 @@ function getWorksData() {
   const works = [];
 
   // Process from row 2 (row 1 is header)
-  // Expected columns: Timestamp, Title, Author, Category, Description, ImageURL, WorkURL, ManusURL
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
 
     const work = {
       id: i,
       timestamp: row[0],
-      title: row[1] || '',
-      author: row[2] || '',
-      category: mapCategory(row[3]),
-      description: row[4] || '',
-      imageUrl: row[5] || '',
-      workUrl: row[6] || '',
-      manusUrl: row[7] || ''
+      author: row[2] || '',           // ニックネーム
+      twitter: row[3] || '',          // X アカウント
+      title: row[4] || '',            // 作品名
+      category: mapCategory(row[5]),  // カテゴリ
+      description: row[6] || '',      // 概要
+      imageUrl: convertDriveLink(row[7]),  // スクリーンショット
+      workUrl: row[8] || ''           // 作品のリンク
     };
 
     // Only include if required fields are present
@@ -80,17 +77,37 @@ function getWorksData() {
   return works;
 }
 
+// Google Driveのファイルリンクを直接参照可能なURLに変換
+function convertDriveLink(url) {
+  if (!url) return '';
+  
+  // Google Driveのファイルリンクから画像URLを生成
+  // Format: https://drive.google.com/file/d/FILE_ID/view → https://drive.google.com/uc?id=FILE_ID
+  const driveMatch = url.match(/\/file\/d\/([^\/]+)/);
+  if (driveMatch) {
+    return `https://drive.google.com/uc?id=${driveMatch[1]}`;
+  }
+  
+  // Already a direct URL or other format
+  return url;
+}
+
 function mapCategory(categoryInput) {
   // Map form selection to category ID
   const categoryMap = {
+    'Apps & Tools（Webアプリ、Chrome拡張機能、自動化ツールなど）': 'apps',
     'Apps & Tools': 'apps',
     'apps': 'apps',
+    'Documents（プロンプト集、AI活用のノウハウ記事、電子書籍など）': 'documents',
     'Documents': 'documents',
     'documents': 'documents',
+    'Data & Analysis（データ分析レポート、予測モデル、可視化ダッシュボードなど）': 'data',
     'Data & Analysis': 'data',
     'data': 'data',
+    'Creative（AI生成画像、動画、音楽、デザイン、小説など）': 'creative',
     'Creative': 'creative',
     'creative': 'creative',
+    'Others（上記に当てはまらないもの）': 'others',
     'Others': 'others',
     'others': 'others'
   };
