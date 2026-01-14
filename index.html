@@ -17,6 +17,7 @@
       <div class="nav-links">
         <a href="#about">About</a>
         <a href="#works">Works</a>
+        <a href="#gallery">Gallery</a>
         <a href="#schedule">Schedule</a>
         <a href="#join" class="nav-cta">Join Now</a>
       </div>
@@ -153,6 +154,60 @@
     </div>
   </section>
 
+  <!-- Gallery Section -->
+  <section id="gallery" class="gallery">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">02.5</span>
+        <h2 class="section-title">Gallery</h2>
+      </div>
+      <p class="gallery-intro">
+        #ManusWorks で投稿された作品コレクション
+      </p>
+
+      <!-- Category Filters -->
+      <div class="gallery-filters">
+        <button class="filter-btn active" data-category="all">All</button>
+        <button class="filter-btn" data-category="apps">Apps & Tools</button>
+        <button class="filter-btn" data-category="documents">Documents</button>
+        <button class="filter-btn" data-category="data">Data & Analysis</button>
+        <button class="filter-btn" data-category="creative">Creative</button>
+        <button class="filter-btn" data-category="others">Others</button>
+      </div>
+
+      <!-- Loading State -->
+      <div class="gallery-loading" id="gallery-loading">
+        <div class="loading-spinner"></div>
+        <p>作品を読み込んでいます...</p>
+      </div>
+
+      <!-- Error State -->
+      <div class="gallery-error" id="gallery-error" style="display: none;">
+        <p>作品の読み込みに失敗しました。</p>
+        <button class="btn btn-secondary" id="retry-btn">再試行</button>
+      </div>
+
+      <!-- Empty State -->
+      <div class="gallery-empty" id="gallery-empty" style="display: none;">
+        <p>まだ作品が投稿されていません。</p>
+        <a href="#join" class="btn btn-primary">最初の作品を投稿する</a>
+      </div>
+
+      <!-- Gallery Grid -->
+      <div class="gallery-grid" id="gallery-grid" style="display: none;">
+        <!-- Dynamically populated by JavaScript -->
+      </div>
+
+      <!-- Submit CTA -->
+      <div class="gallery-cta">
+        <p>あなたの作品も追加しませんか？</p>
+        <a href="YOUR_GOOGLE_FORM_URL" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+          作品を投稿する
+        </a>
+      </div>
+    </div>
+  </section>
+
   <!-- Schedule Section -->
   <section id="schedule" class="schedule">
     <div class="container">
@@ -237,6 +292,37 @@
       </div>
     </div>
   </footer>
+
+  <!-- Work Detail Modal -->
+  <div class="modal" id="work-modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="modal-body">
+        <div class="modal-image">
+          <img src="" alt="" id="modal-image">
+        </div>
+        <div class="modal-info">
+          <span class="modal-category" id="modal-category"></span>
+          <h3 class="modal-title" id="modal-title"></h3>
+          <p class="modal-author" id="modal-author"></p>
+          <p class="modal-description" id="modal-description"></p>
+          <div class="modal-links">
+            <a href="" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="modal-work-link">
+              作品を見る
+            </a>
+            <a href="" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="modal-manus-link">
+              Manusで見る
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

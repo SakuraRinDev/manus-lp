@@ -172,3 +172,367 @@ function initParallax() {
 
 // Initialize parallax
 initParallax();
+
+// ========================================
+// Gallery Module
+// ========================================
+
+// Configuration
+const GALLERY_CONFIG = {
+  // Google Apps Script Web App URL (set after deployment)
+  API_URL: '',
+  // Category mapping
+  categories: {
+    'apps': 'Apps & Tools',
+    'documents': 'Documents',
+    'data': 'Data & Analysis',
+    'creative': 'Creative',
+    'others': 'Others'
+  },
+  // Demo mode - set to true to show sample data when API_URL is empty
+  demoMode: true
+};
+
+// Sample data for demo mode
+const DEMO_WORKS = [
+  {
+    id: 1,
+    title: 'Market Research Dashboard',
+    author: 'Demo User',
+    category: 'data',
+    description: 'Manusを使って作成した市場調査ダッシュボード。競合分析と市場トレンドを自動で可視化します。',
+    imageUrl: '',
+    workUrl: '',
+    manusUrl: ''
+  },
+  {
+    id: 2,
+    title: 'Auto Report Generator',
+    author: 'Demo User',
+    category: 'apps',
+    description: 'データを入力すると自動でレポートを生成するWebアプリケーション。',
+    imageUrl: '',
+    workUrl: '',
+    manusUrl: ''
+  },
+  {
+    id: 3,
+    title: 'Technical Documentation',
+    author: 'Demo User',
+    category: 'documents',
+    description: 'プロジェクトの技術仕様書を自動生成。Manusの文書作成能力を活用。',
+    imageUrl: '',
+    workUrl: '',
+    manusUrl: ''
+  },
+  {
+    id: 4,
+    title: 'AI Art Collection',
+    author: 'Demo User',
+    category: 'creative',
+    description: 'Manusを使って制作したクリエイティブ作品集。',
+    imageUrl: '',
+    workUrl: '',
+    manusUrl: ''
+  }
+];
+
+// State
+let galleryWorks = [];
+let filteredWorks = [];
+let currentFilter = 'all';
+
+// Initialize Gallery
+function initGallery() {
+  const galleryGrid = document.getElementById('gallery-grid');
+  if (!galleryGrid) return;
+
+  // Set up filter button events
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const category = btn.dataset.category;
+      setActiveFilter(category);
+      filterWorks(category);
+    });
+  });
+
+  // Set up modal events
+  const workModal = document.getElementById('work-modal');
+  if (workModal) {
+    workModal.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+    workModal.querySelector('.modal-close').addEventListener('click', closeModal);
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && workModal.classList.contains('open')) {
+        closeModal();
+      }
+    });
+  }
+
+  // Set up retry button
+  const retryBtn = document.getElementById('retry-btn');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', fetchWorks);
+  }
+
+  // Fetch works data
+  fetchWorks();
+}
+
+// Fetch works from Google Apps Script API
+async function fetchWorks() {
+  showLoading();
+
+  // Use demo data if API_URL is not set
+  if (!GALLERY_CONFIG.API_URL && GALLERY_CONFIG.demoMode) {
+    setTimeout(() => {
+      galleryWorks = [...DEMO_WORKS];
+      filteredWorks = [...galleryWorks];
+      renderWorks();
+    }, 500);
+    return;
+  }
+
+  if (!GALLERY_CONFIG.API_URL) {
+    showEmpty();
+    return;
+  }
+
+  try {
+    const response = await fetch(GALLERY_CONFIG.API_URL);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    galleryWorks = data.works || [];
+    filteredWorks = [...galleryWorks];
+
+    if (galleryWorks.length === 0) {
+      showEmpty();
+    } else {
+      renderWorks();
+    }
+  } catch (error) {
+    console.error('Failed to fetch works:', error);
+    showError();
+  }
+}
+
+// Show loading state
+function showLoading() {
+  const galleryLoading = document.getElementById('gallery-loading');
+  const galleryError = document.getElementById('gallery-error');
+  const galleryEmpty = document.getElementById('gallery-empty');
+  const galleryGrid = document.getElementById('gallery-grid');
+
+  if (galleryLoading) galleryLoading.style.display = 'flex';
+  if (galleryError) galleryError.style.display = 'none';
+  if (galleryEmpty) galleryEmpty.style.display = 'none';
+  if (galleryGrid) galleryGrid.style.display = 'none';
+}
+
+// Show error state
+function showError() {
+  const galleryLoading = document.getElementById('gallery-loading');
+  const galleryError = document.getElementById('gallery-error');
+  const galleryEmpty = document.getElementById('gallery-empty');
+  const galleryGrid = document.getElementById('gallery-grid');
+
+  if (galleryLoading) galleryLoading.style.display = 'none';
+  if (galleryError) galleryError.style.display = 'block';
+  if (galleryEmpty) galleryEmpty.style.display = 'none';
+  if (galleryGrid) galleryGrid.style.display = 'none';
+}
+
+// Show empty state
+function showEmpty() {
+  const galleryLoading = document.getElementById('gallery-loading');
+  const galleryError = document.getElementById('gallery-error');
+  const galleryEmpty = document.getElementById('gallery-empty');
+  const galleryGrid = document.getElementById('gallery-grid');
+
+  if (galleryLoading) galleryLoading.style.display = 'none';
+  if (galleryError) galleryError.style.display = 'none';
+  if (galleryEmpty) galleryEmpty.style.display = 'block';
+  if (galleryGrid) galleryGrid.style.display = 'none';
+}
+
+// Set active filter button
+function setActiveFilter(category) {
+  currentFilter = category;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.category === category);
+  });
+}
+
+// Filter works by category
+function filterWorks(category) {
+  if (category === 'all') {
+    filteredWorks = [...galleryWorks];
+  } else {
+    filteredWorks = galleryWorks.filter(work => work.category === category);
+  }
+  renderWorks();
+}
+
+// Render works to grid
+function renderWorks() {
+  const galleryLoading = document.getElementById('gallery-loading');
+  const galleryError = document.getElementById('gallery-error');
+  const galleryEmpty = document.getElementById('gallery-empty');
+  const galleryGrid = document.getElementById('gallery-grid');
+
+  if (galleryLoading) galleryLoading.style.display = 'none';
+  if (galleryError) galleryError.style.display = 'none';
+  if (galleryEmpty) galleryEmpty.style.display = 'none';
+  if (galleryGrid) galleryGrid.style.display = 'grid';
+
+  if (filteredWorks.length === 0) {
+    galleryGrid.innerHTML = `
+      <div class="gallery-no-results" style="grid-column: 1 / -1; text-align: center; padding: 48px;">
+        <p style="color: var(--color-gray-500);">
+          このカテゴリの作品はまだありません。
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  galleryGrid.innerHTML = filteredWorks.map((work, index) => createWorkCard(work, index)).join('');
+
+  // Add click events to cards
+  galleryGrid.querySelectorAll('.gallery-card').forEach((card, index) => {
+    card.addEventListener('click', () => openModal(filteredWorks[index]));
+  });
+
+  // Fade-in animation
+  const cards = galleryGrid.querySelectorAll('.gallery-card');
+  cards.forEach((card, index) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, index * 100);
+  });
+}
+
+// Create work card HTML
+function createWorkCard(work, index) {
+  const categoryLabel = GALLERY_CONFIG.categories[work.category] || work.category;
+  const imageHtml = work.imageUrl
+    ? `<img src="${escapeHtml(work.imageUrl)}" alt="${escapeHtml(work.title)}" loading="lazy">`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <path d="M21 15l-5-5L5 21"/>
+       </svg>`;
+
+  return `
+    <article class="gallery-card" data-index="${index}">
+      <div class="gallery-card-image ${work.imageUrl ? '' : 'no-image'}">
+        ${imageHtml}
+      </div>
+      <div class="gallery-card-content">
+        <span class="gallery-card-category">${escapeHtml(categoryLabel)}</span>
+        <h4 class="gallery-card-title">${escapeHtml(work.title)}</h4>
+        <p class="gallery-card-author">by ${escapeHtml(work.author)}</p>
+      </div>
+    </article>
+  `;
+}
+
+// Open modal with work details
+function openModal(work) {
+  const modal = document.getElementById('work-modal');
+  if (!modal) return;
+
+  const categoryLabel = GALLERY_CONFIG.categories[work.category] || work.category;
+
+  // Update modal content
+  const modalImage = document.getElementById('modal-image');
+  const modalCategory = document.getElementById('modal-category');
+  const modalTitle = document.getElementById('modal-title');
+  const modalAuthor = document.getElementById('modal-author');
+  const modalDescription = document.getElementById('modal-description');
+  const workLink = document.getElementById('modal-work-link');
+  const manusLink = document.getElementById('modal-manus-link');
+
+  if (modalImage) {
+    modalImage.src = work.imageUrl || '';
+    modalImage.alt = work.title;
+  }
+  if (modalCategory) modalCategory.textContent = categoryLabel;
+  if (modalTitle) modalTitle.textContent = work.title;
+  if (modalAuthor) modalAuthor.textContent = `by ${work.author}`;
+  if (modalDescription) modalDescription.textContent = work.description || '';
+
+  // Set up links
+  if (workLink) {
+    if (work.workUrl) {
+      workLink.href = work.workUrl;
+      workLink.style.display = 'inline-flex';
+    } else {
+      workLink.style.display = 'none';
+    }
+  }
+
+  if (manusLink) {
+    if (work.manusUrl) {
+      manusLink.href = work.manusUrl;
+      manusLink.style.display = 'inline-flex';
+    } else {
+      manusLink.style.display = 'none';
+    }
+  }
+
+  // Handle missing image
+  const modalImageContainer = modal.querySelector('.modal-image');
+  const modalBody = modal.querySelector('.modal-body');
+  if (modalImageContainer && modalBody) {
+    if (!work.imageUrl) {
+      modalImageContainer.style.display = 'none';
+      modalBody.style.gridTemplateColumns = '1fr';
+    } else {
+      modalImageContainer.style.display = 'block';
+      modalBody.style.gridTemplateColumns = window.innerWidth > 768 ? '1fr 1fr' : '1fr';
+    }
+  }
+
+  // Open modal
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// Close modal
+function closeModal() {
+  const modal = document.getElementById('work-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+// HTML escape helper
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Initialize gallery when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('gallery-grid')) {
+    initGallery();
+  }
+});
