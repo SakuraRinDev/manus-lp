@@ -180,7 +180,7 @@ initParallax();
 // Configuration
 const GALLERY_CONFIG = {
   // Google Apps Script Web App URL (set after deployment)
-  API_URL: 'https://script.google.com/macros/s/AKfycbwgxia90TRJJJXYuYYCGoRyMlkCXMEQcLELYNiy2rZ9dsWPS7MQ1QwpucBlT2xKmC0P/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzi7loloNHdYq59NXkfth2T1elyVsdCz9zXlu2mYeysEqkD7SCgsdUkFDRXiOhKkhH8/exec',
   // Category mapping
   categories: {
     'apps': 'Apps & Tools',
@@ -529,18 +529,45 @@ function openModal(work) {
   document.body.style.overflow = 'hidden';
 }
 
-// Toggle detail view in modal
+// Toggle detail view - expand to full modal
 function toggleDetail(work) {
+  const modal = document.getElementById('work-modal');
   const modalDetail = document.getElementById('modal-detail');
   const toggleDetailBtn = document.getElementById('modal-toggle-detail');
+  const modalBody = modal.querySelector('.modal-body');
+  const modalImage = document.getElementById('modal-image');
+  const modalImageContainer = modal.querySelector('.modal-image');
+  const modalContent = modal.querySelector('.modal-content');
 
   if (modalDetail && toggleDetailBtn) {
     if (modalDetail.style.display === 'none') {
+      // 詳細表示モードに切り替え
       modalDetail.style.display = 'block';
       toggleDetailBtn.textContent = '詳細を隠す';
+
+      // モーダルを拡大
+      modalContent.classList.add('modal-expanded');
+      modalBody.style.gridTemplateColumns = '1fr';
+
+      // 画像をフルサイズで表示
+      if (modalImageContainer) {
+        modalImageContainer.classList.add('modal-image-expanded');
+      }
     } else {
+      // プレビューモードに戻す
       modalDetail.style.display = 'none';
       toggleDetailBtn.textContent = '詳細を見る';
+
+      // モーダルを縮小
+      modalContent.classList.remove('modal-expanded');
+      if (window.innerWidth > 768) {
+        modalBody.style.gridTemplateColumns = '1fr 1fr';
+      }
+
+      // 画像を元に戻す
+      if (modalImageContainer) {
+        modalImageContainer.classList.remove('modal-image-expanded');
+      }
     }
   }
 }

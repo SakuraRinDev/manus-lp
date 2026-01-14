@@ -25,7 +25,9 @@
 }
 
 /* Reset & Base */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -272,15 +274,53 @@ img {
   opacity: 0.5;
 }
 
-.hero-lines span:nth-child(1) { width: 200px; height: 1px; top: 20%; right: 5%; }
-.hero-lines span:nth-child(2) { width: 1px; height: 150px; top: 30%; right: 40%; }
-.hero-lines span:nth-child(3) { width: 100px; height: 1px; top: 60%; right: 15%; }
-.hero-lines span:nth-child(4) { width: 1px; height: 200px; top: 50%; right: 25%; }
-.hero-lines span:nth-child(5) { width: 150px; height: 1px; top: 80%; right: 30%; }
+.hero-lines span:nth-child(1) {
+  width: 200px;
+  height: 1px;
+  top: 20%;
+  right: 5%;
+}
+
+.hero-lines span:nth-child(2) {
+  width: 1px;
+  height: 150px;
+  top: 30%;
+  right: 40%;
+}
+
+.hero-lines span:nth-child(3) {
+  width: 100px;
+  height: 1px;
+  top: 60%;
+  right: 15%;
+}
+
+.hero-lines span:nth-child(4) {
+  width: 1px;
+  height: 200px;
+  top: 50%;
+  right: 25%;
+}
+
+.hero-lines span:nth-child(5) {
+  width: 150px;
+  height: 1px;
+  top: 80%;
+  right: 30%;
+}
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
-  50% { opacity: 0.5; transform: translateY(-50%) scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(1.05);
+  }
 }
 
 /* Section Common Styles */
@@ -506,7 +546,7 @@ section {
   margin-bottom: 16px;
 }
 
-.join > p {
+.join>p {
   color: var(--color-gray-600);
   margin-bottom: 48px;
 }
@@ -855,7 +895,9 @@ section {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .gallery-loading p {
@@ -939,6 +981,24 @@ section {
 
 .modal.open .modal-content {
   transform: translateY(0);
+}
+
+/* Expanded modal state */
+.modal-content.modal-expanded {
+  max-width: 95vw;
+  max-height: 95vh;
+  width: 1200px;
+  transition: all 0.3s ease;
+}
+
+.modal-image-expanded {
+  aspect-ratio: auto !important;
+  max-height: 60vh;
+}
+
+.modal-image-expanded img {
+  object-fit: contain;
+  max-height: 60vh;
 }
 
 .modal-close {
@@ -1026,8 +1086,15 @@ section {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-twitter {

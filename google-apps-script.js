@@ -29,7 +29,7 @@
 const CONFIG = {
   // 承認済み画像を格納するフォルダID
   // フォルダURLが https://drive.google.com/drive/folders/XXXX なら、XXXXの部分
-  APPROVED_FOLDER_ID: 'YOUR_APPROVED_FOLDER_ID_HERE',
+  APPROVED_FOLDER_ID: '1oQSx-hBHCt1J9pQG_x-7lnJXTUMXT3Q_',
 
   // カラムインデックス（0始まり）
   COL: {
@@ -106,51 +106,71 @@ function getApprovedWorks() {
 
 // ========================================
 // onEdit トリガー: ステータス変更時に画像を公開
+// ※シンプルトリガー(onEdit)ではなく、インストール可能リガーとして登録する関数
 // ========================================
-function onEdit(e) {
+function installedOnEdit(e) {
+  console.log('=== installedOnEdit triggered ===');
+  console.log('Event object:', JSON.stringify(e));
+
   const sheet = e.source.getActiveSheet();
   const range = e.range;
   const row = range.getRow();
   const col = range.getColumn();
 
+  console.log('Row:', row, 'Col:', col, 'Expected Status Col:', CONFIG.COL.STATUS + 1);
+
   // Status列（I列 = 9）が編集された場合のみ処理
   if (col !== CONFIG.COL.STATUS + 1) {
+    console.log('Not Status column, skipping');
     return;
   }
 
-  const newValue = (e.value || '').toString().toUpperCase().trim();
+  // e.value ではなく、セルの値を直接読み取る
+  const newValue = range.getValue().toString().toUpperCase().trim();
+  console.log('New value (from cell):', newValue);
 
   if (newValue === 'APPROVED') {
+    console.log('Processing approval for row:', row);
     processApproval(sheet, row);
+  } else {
+    console.log('Value is not APPROVED, skipping');
   }
 }
 
 function processApproval(sheet, row) {
+  console.log('=== processApproval started ===');
   const COL = CONFIG.COL;
   const originalImageUrl = sheet.getRange(row, COL.ORIGINAL_IMAGE + 1).getValue();
+  console.log('Original Image URL (G column):', originalImageUrl);
 
   if (!originalImageUrl) {
+    console.log('ERROR: Original image URL is empty');
     return;
   }
 
   try {
     // Google DriveのファイルIDを抽出
     const fileId = extractFileId(originalImageUrl);
+    console.log('Extracted file ID:', fileId);
+
     if (!fileId) {
-      Logger.log('Could not extract file ID from: ' + originalImageUrl);
+      console.log('ERROR: Could not extract file ID from:', originalImageUrl);
       return;
     }
 
     // ファイルを公開フォルダにコピー
+    console.log('Copying to approved folder...');
     const publicUrl = copyToApprovedFolder(fileId);
+    console.log('Public URL:', publicUrl);
 
     if (publicUrl) {
       // Public_Image_URL列に書き込み
       sheet.getRange(row, COL.PUBLIC_IMAGE_URL + 1).setValue(publicUrl);
-      Logger.log('Successfully processed approval for row ' + row);
+      console.log('SUCCESS: Written to column J');
     }
   } catch (error) {
-    Logger.log('Error processing approval: ' + error.message);
+    console.log('ERROR:', error.message);
+    console.log('Stack:', error.stack);
   }
 }
 
@@ -178,8 +198,8 @@ function copyToApprovedFolder(fileId) {
   // 公開設定: リンクを知っている全員が閲覧可能
   copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  // 公開URL生成
-  const publicUrl = 'https://drive.google.com/uc?export=view&id=' + copiedFile.getId();
+  // 公開URL生成（lh3.googleusercontent.com形式 = クロスオリジンで動作）
+  const publicUrl = 'https://lh3.googleusercontent.com/d/' + copiedFile.getId();
 
   return publicUrl;
 }
@@ -228,22 +248,20 @@ function testGetApprovedWorks() {
   Logger.log(JSON.stringify(works, null, 2));
 }
 
-// 初回セットアップ: onEditトリガーを登録
+// 初回セットアップ: installedOnEditトリガーを登録
 function setupTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
 
-  // 既存のonEditトリガーを削除
+  // 既存のトリガーをすべて削除（クリーンアップ）
   triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'onEdit') {
-      ScriptApp.deleteTrigger(trigger);
-    }
+    ScriptApp.deleteTrigger(trigger);
   });
 
   // 新しいトリガーを作成
-  ScriptApp.newTrigger('onEdit')
+  ScriptApp.newTrigger('installedOnEdit')
     .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
     .onEdit()
     .create();
 
-  Logger.log('onEdit trigger has been set up.');
+  Logger.log('installedOnEdit trigger has been set up.');
 }
