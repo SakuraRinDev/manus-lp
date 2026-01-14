@@ -465,8 +465,6 @@ function openModal(work) {
   const modalAuthor = document.getElementById('modal-author');
   const modalDescription = document.getElementById('modal-description');
   const modalTwitter = document.getElementById('modal-twitter');
-  const modalDetail = document.getElementById('modal-detail');
-  const toggleDetailBtn = document.getElementById('modal-toggle-detail');
   const workLink = document.getElementById('modal-work-link');
 
   if (modalImage) {
@@ -490,15 +488,6 @@ function openModal(work) {
     } else {
       modalTwitter.textContent = '';
     }
-  }
-
-  // Reset detail section to hidden
-  if (modalDetail) {
-    modalDetail.style.display = 'none';
-  }
-  if (toggleDetailBtn) {
-    toggleDetailBtn.textContent = '詳細を見る';
-    toggleDetailBtn.onclick = () => toggleDetail(work);
   }
 
   // Set up work link (with URL validation for security)
