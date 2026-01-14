@@ -316,13 +316,19 @@
           <span class="modal-category" id="modal-category"></span>
           <h3 class="modal-title" id="modal-title"></h3>
           <p class="modal-author" id="modal-author"></p>
-          <p class="modal-description" id="modal-description"></p>
+
+          <!-- Detail section (hidden by default, shown on "詳細を見る" click) -->
+          <div class="modal-detail" id="modal-detail" style="display: none;">
+            <p class="modal-description" id="modal-description"></p>
+            <p class="modal-twitter" id="modal-twitter"></p>
+          </div>
+
           <div class="modal-links">
+            <button class="btn btn-secondary" id="modal-toggle-detail">
+              詳細を見る
+            </button>
             <a href="" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="modal-work-link">
               作品を見る
-            </a>
-            <a href="" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="modal-manus-link">
-              Manusで見る
             </a>
           </div>
         </div>

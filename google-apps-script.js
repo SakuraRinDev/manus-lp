@@ -1,35 +1,60 @@
 // ========================================
 // Google Apps Script for Manus Works Gallery
+// 承認ワークフロー対応版
 // ========================================
 //
-// フォームフィールド（回答がスプレッドシートに記録される順序）:
+// スプレッドシートのカラム順:
 // 0: タイムスタンプ
-// 1: メールアドレス
-// 2: ニックネーム（author）
-// 3: X（旧Twitter）アカウント名（twitter）
-// 4: 作品名（title）
-// 5: 作品のカテゴリ（category）
-// 6: 作品の概要・アピールポイント（description）
-// 7: 作品のスクリーンショット（imageUrl - Google Driveリンク）
-// 8: 作品のリンク（workUrl）
+// 1: ニックネーム（author）
+// 2: X（旧Twitter）アカウント名（twitter）
+// 3: 作品名（title）
+// 4: 作品のカテゴリ（category）
+// 5: 作品の概要・アピールポイント（description）
+// 6: 作品のスクリーンショット（元画像URL）
+// 7: 作品のリンク（workUrl）
+// 8: Status（PENDING / APPROVED / REJECTED）
+// 9: Public_Image_URL（公開用画像URL - 自動生成）
 //
-// Setup Instructions:
-// 1. フォームに紐づいたスプレッドシートを開く
-// 2. Extensions > Apps Script を開く
-// 3. このコードを Code.gs に貼り付け
-// 4. Deploy > New Deployment > Web App
-//    - Execute as: Me
-//    - Who has access: Anyone
-// 5. Web App URLをコピーし、script.js の GALLERY_CONFIG.API_URL に設定
+// --- Setup Instructions ---
+// 1. スプレッドシートの列I に「Status」、列J に「Public_Image_URL」ヘッダーを追加
+// 2. Google Drive に「01_approved」フォルダを作成し、「リンクを知っている全員」に共有
+// 3. 下記の APPROVED_FOLDER_ID を作成したフォルダのIDに置き換え
+// 4. このスクリプトをデプロイ → Web App URLを取得
+// 5. トリガー設定: onEdit関数をスプレッドシートの編集時に実行するよう設定
 //
 
+// ========================================
+// 設定
+// ========================================
+const CONFIG = {
+  // 承認済み画像を格納するフォルダID
+  // フォルダURLが https://drive.google.com/drive/folders/XXXX なら、XXXXの部分
+  APPROVED_FOLDER_ID: 'YOUR_APPROVED_FOLDER_ID_HERE',
+
+  // カラムインデックス（0始まり）
+  COL: {
+    TIMESTAMP: 0,
+    NICKNAME: 1,
+    TWITTER: 2,
+    TITLE: 3,
+    CATEGORY: 4,
+    DESCRIPTION: 5,
+    ORIGINAL_IMAGE: 6,
+    PROJECT_URL: 7,
+    STATUS: 8,
+    PUBLIC_IMAGE_URL: 9
+  }
+};
+
+// ========================================
+// Web API: 承認済み作品のみ返す
+// ========================================
 function doGet(e) {
-  // CORS support
   const output = ContentService.createTextOutput();
   output.setMimeType(ContentService.MimeType.JSON);
 
   try {
-    const works = getWorksData();
+    const works = getApprovedWorks();
     output.setContent(JSON.stringify({ works: works }));
   } catch (error) {
     output.setContent(JSON.stringify({ error: error.message }));
@@ -38,62 +63,142 @@ function doGet(e) {
   return output;
 }
 
-function getWorksData() {
+function getApprovedWorks() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const data = sheet.getDataRange().getValues();
 
-  // Skip if only header row
   if (data.length <= 1) {
     return [];
   }
 
   const works = [];
+  const COL = CONFIG.COL;
 
-  // Process from row 2 (row 1 is header)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
+    const status = (row[COL.STATUS] || '').toString().toUpperCase().trim();
+
+    // APPROVED のみ返す
+    if (status !== 'APPROVED') {
+      continue;
+    }
 
     const work = {
       id: i,
-      timestamp: row[0],
-      author: row[2] || '',           // ニックネーム
-      twitter: row[3] || '',          // X アカウント
-      title: row[4] || '',            // 作品名
-      category: mapCategory(row[5]),  // カテゴリ
-      description: row[6] || '',      // 概要
-      imageUrl: convertDriveLink(row[7]),  // スクリーンショット
-      workUrl: row[8] || ''           // 作品のリンク
+      timestamp: row[COL.TIMESTAMP],
+      author: row[COL.NICKNAME] || '',
+      twitter: row[COL.TWITTER] || '',
+      title: row[COL.TITLE] || '',
+      category: mapCategory(row[COL.CATEGORY]),
+      description: row[COL.DESCRIPTION] || '',
+      imageUrl: row[COL.PUBLIC_IMAGE_URL] || convertDriveLink(row[COL.ORIGINAL_IMAGE]),
+      workUrl: row[COL.PROJECT_URL] || ''
     };
 
-    // Only include if required fields are present
     if (work.title && work.author) {
       works.push(work);
     }
   }
 
-  // Sort by newest first
   works.reverse();
-
   return works;
 }
 
-// Google Driveのファイルリンクを直接参照可能なURLに変換
+// ========================================
+// onEdit トリガー: ステータス変更時に画像を公開
+// ========================================
+function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  const range = e.range;
+  const row = range.getRow();
+  const col = range.getColumn();
+
+  // Status列（I列 = 9）が編集された場合のみ処理
+  if (col !== CONFIG.COL.STATUS + 1) {
+    return;
+  }
+
+  const newValue = (e.value || '').toString().toUpperCase().trim();
+
+  if (newValue === 'APPROVED') {
+    processApproval(sheet, row);
+  }
+}
+
+function processApproval(sheet, row) {
+  const COL = CONFIG.COL;
+  const originalImageUrl = sheet.getRange(row, COL.ORIGINAL_IMAGE + 1).getValue();
+
+  if (!originalImageUrl) {
+    return;
+  }
+
+  try {
+    // Google DriveのファイルIDを抽出
+    const fileId = extractFileId(originalImageUrl);
+    if (!fileId) {
+      Logger.log('Could not extract file ID from: ' + originalImageUrl);
+      return;
+    }
+
+    // ファイルを公開フォルダにコピー
+    const publicUrl = copyToApprovedFolder(fileId);
+
+    if (publicUrl) {
+      // Public_Image_URL列に書き込み
+      sheet.getRange(row, COL.PUBLIC_IMAGE_URL + 1).setValue(publicUrl);
+      Logger.log('Successfully processed approval for row ' + row);
+    }
+  } catch (error) {
+    Logger.log('Error processing approval: ' + error.message);
+  }
+}
+
+function extractFileId(url) {
+  if (!url) return null;
+
+  // https://drive.google.com/open?id=FILE_ID
+  const openMatch = url.match(/[?&]id=([^&]+)/);
+  if (openMatch) return openMatch[1];
+
+  // https://drive.google.com/file/d/FILE_ID/view
+  const fileMatch = url.match(/\/file\/d\/([^\/]+)/);
+  if (fileMatch) return fileMatch[1];
+
+  return null;
+}
+
+function copyToApprovedFolder(fileId) {
+  const file = DriveApp.getFileById(fileId);
+  const approvedFolder = DriveApp.getFolderById(CONFIG.APPROVED_FOLDER_ID);
+
+  // ファイルをコピー
+  const copiedFile = file.makeCopy(file.getName(), approvedFolder);
+
+  // 公開設定: リンクを知っている全員が閲覧可能
+  copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  // 公開URL生成
+  const publicUrl = 'https://drive.google.com/uc?export=view&id=' + copiedFile.getId();
+
+  return publicUrl;
+}
+
+// ========================================
+// ユーティリティ関数
+// ========================================
 function convertDriveLink(url) {
   if (!url) return '';
-  
-  // Google Driveのファイルリンクから画像URLを生成
-  // Format: https://drive.google.com/file/d/FILE_ID/view → https://drive.google.com/uc?id=FILE_ID
-  const driveMatch = url.match(/\/file\/d\/([^\/]+)/);
-  if (driveMatch) {
-    return `https://drive.google.com/uc?id=${driveMatch[1]}`;
+
+  const fileId = extractFileId(url);
+  if (fileId) {
+    return 'https://drive.google.com/uc?export=view&id=' + fileId;
   }
-  
-  // Already a direct URL or other format
+
   return url;
 }
 
 function mapCategory(categoryInput) {
-  // Map form selection to category ID
   const categoryMap = {
     'Apps & Tools（Webアプリ、Chrome拡張機能、自動化ツールなど）': 'apps',
     'Apps & Tools': 'apps',
@@ -115,8 +220,30 @@ function mapCategory(categoryInput) {
   return categoryMap[categoryInput] || 'others';
 }
 
-// Test function - run this to verify data extraction
-function testGetWorks() {
-  const works = getWorksData();
+// ========================================
+// テスト・セットアップ用関数
+// ========================================
+function testGetApprovedWorks() {
+  const works = getApprovedWorks();
   Logger.log(JSON.stringify(works, null, 2));
+}
+
+// 初回セットアップ: onEditトリガーを登録
+function setupTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+
+  // 既存のonEditトリガーを削除
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'onEdit') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // 新しいトリガーを作成
+  ScriptApp.newTrigger('onEdit')
+    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+    .onEdit()
+    .create();
+
+  Logger.log('onEdit trigger has been set up.');
 }

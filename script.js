@@ -180,7 +180,7 @@ initParallax();
 // Configuration
 const GALLERY_CONFIG = {
   // Google Apps Script Web App URL (set after deployment)
-  API_URL: 'https://script.google.com/macros/s/AKfycbwdru_w7eVCrobH1B6j1hCBOrXflJTIB9W9kG9mEJ35v_FcAbkMNfZ10bSlmg2jTqyB/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwgxia90TRJJJXYuYYCGoRyMlkCXMEQcLELYNiy2rZ9dsWPS7MQ1QwpucBlT2xKmC0P/exec',
   // Category mapping
   categories: {
     'apps': 'Apps & Tools',
@@ -451,7 +451,7 @@ function createWorkCard(work, index) {
   `;
 }
 
-// Open modal with work details
+// Open modal with work details (preview mode first)
 function openModal(work) {
   const modal = document.getElementById('work-modal');
   if (!modal) return;
@@ -464,8 +464,10 @@ function openModal(work) {
   const modalTitle = document.getElementById('modal-title');
   const modalAuthor = document.getElementById('modal-author');
   const modalDescription = document.getElementById('modal-description');
+  const modalTwitter = document.getElementById('modal-twitter');
+  const modalDetail = document.getElementById('modal-detail');
+  const toggleDetailBtn = document.getElementById('modal-toggle-detail');
   const workLink = document.getElementById('modal-work-link');
-  const manusLink = document.getElementById('modal-manus-link');
 
   if (modalImage) {
     modalImage.src = work.imageUrl || '';
@@ -474,24 +476,38 @@ function openModal(work) {
   if (modalCategory) modalCategory.textContent = categoryLabel;
   if (modalTitle) modalTitle.textContent = work.title;
   if (modalAuthor) modalAuthor.textContent = `by ${work.author}`;
-  if (modalDescription) modalDescription.textContent = work.description || '';
 
-  // Set up links
+  // Description with line breaks preserved
+  if (modalDescription) {
+    modalDescription.innerHTML = escapeHtml(work.description || '').replace(/\n/g, '<br>');
+  }
+
+  // X account link
+  if (modalTwitter) {
+    if (work.twitter) {
+      const twitterHandle = work.twitter.replace('@', '');
+      modalTwitter.innerHTML = `<a href="https://x.com/${escapeHtml(twitterHandle)}" target="_blank" rel="noopener noreferrer">@${escapeHtml(twitterHandle)}</a>`;
+    } else {
+      modalTwitter.textContent = '';
+    }
+  }
+
+  // Reset detail section to hidden
+  if (modalDetail) {
+    modalDetail.style.display = 'none';
+  }
+  if (toggleDetailBtn) {
+    toggleDetailBtn.textContent = '詳細を見る';
+    toggleDetailBtn.onclick = () => toggleDetail(work);
+  }
+
+  // Set up work link
   if (workLink) {
-    if (work.workUrl) {
+    if (work.workUrl && work.workUrl !== 'なし。' && work.workUrl !== 'なし') {
       workLink.href = work.workUrl;
       workLink.style.display = 'inline-flex';
     } else {
       workLink.style.display = 'none';
-    }
-  }
-
-  if (manusLink) {
-    if (work.manusUrl) {
-      manusLink.href = work.manusUrl;
-      manusLink.style.display = 'inline-flex';
-    } else {
-      manusLink.style.display = 'none';
     }
   }
 
@@ -511,6 +527,22 @@ function openModal(work) {
   // Open modal
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+
+// Toggle detail view in modal
+function toggleDetail(work) {
+  const modalDetail = document.getElementById('modal-detail');
+  const toggleDetailBtn = document.getElementById('modal-toggle-detail');
+
+  if (modalDetail && toggleDetailBtn) {
+    if (modalDetail.style.display === 'none') {
+      modalDetail.style.display = 'block';
+      toggleDetailBtn.textContent = '詳細を隠す';
+    } else {
+      modalDetail.style.display = 'none';
+      toggleDetailBtn.textContent = '詳細を見る';
+    }
+  }
 }
 
 // Close modal

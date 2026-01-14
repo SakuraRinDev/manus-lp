@@ -1017,12 +1017,39 @@ section {
   color: var(--color-gray-600);
   line-height: 1.8;
   flex: 1;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
+}
+
+.modal-detail {
+  margin-bottom: 24px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-twitter {
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.modal-twitter a {
+  color: var(--color-black);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.modal-twitter a:hover {
+  opacity: 0.7;
 }
 
 .modal-links {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* Modal Responsive */
