@@ -1,2 +1,23 @@
 .vercel
 .env*.local
+
+# --- GA-Workspace Standard Rules ---
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+
+# Environment & Secrets
+.env
+
+# ZG_PROJECT specific
+ZG_PROJECT/
+*_SPEC.MD
