@@ -501,10 +501,11 @@ function openModal(work) {
     toggleDetailBtn.onclick = () => toggleDetail(work);
   }
 
-  // Set up work link
+  // Set up work link (with URL validation for security)
   if (workLink) {
-    if (work.workUrl && work.workUrl !== 'なし。' && work.workUrl !== 'なし') {
-      workLink.href = work.workUrl;
+    const safeWorkUrl = sanitizeUrl(work.workUrl);
+    if (safeWorkUrl) {
+      workLink.href = safeWorkUrl;
       workLink.style.display = 'inline-flex';
     } else {
       workLink.style.display = 'none';
@@ -587,6 +588,32 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// URL validation helper - prevents XSS via malicious URL schemes
+function isValidUrl(url, options = {}) {
+  if (!url || typeof url !== 'string') return false;
+
+  // Trim and check for empty
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === 'なし。' || trimmed === 'なし') return false;
+
+  // Allowed schemes (default: http and https only)
+  const allowedSchemes = options.allowedSchemes || ['http:', 'https:'];
+
+  try {
+    const parsed = new URL(trimmed, location.origin);
+    return allowedSchemes.includes(parsed.protocol);
+  } catch (e) {
+    // Invalid URL
+    return false;
+  }
+}
+
+// Sanitize URL - returns null if invalid
+function sanitizeUrl(url) {
+  if (!isValidUrl(url)) return null;
+  return url.trim();
 }
 
 // Initialize gallery when DOM is ready
