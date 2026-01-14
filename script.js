@@ -462,7 +462,8 @@ function openModal(work) {
   const modalImage = document.getElementById('modal-image');
   const modalCategory = document.getElementById('modal-category');
   const modalTitle = document.getElementById('modal-title');
-  const modalAuthor = document.getElementById('modal-author');
+  const modalHeaderAuthor = document.getElementById('modal-header-author');
+  const modalAvatar = document.getElementById('modal-avatar');
   const modalDescription = document.getElementById('modal-description');
   const modalTwitter = document.getElementById('modal-twitter');
   const workLink = document.getElementById('modal-work-link');
@@ -473,7 +474,18 @@ function openModal(work) {
   }
   if (modalCategory) modalCategory.textContent = categoryLabel;
   if (modalTitle) modalTitle.textContent = work.title;
-  if (modalAuthor) modalAuthor.textContent = `by ${work.author}`;
+
+  // Set header author and avatar
+  if (modalHeaderAuthor) modalHeaderAuthor.textContent = work.author;
+  if (modalAvatar) {
+    // Simple colored avatar with first letter
+    const firstLetter = (work.author || '?').charAt(0).toUpperCase();
+    modalAvatar.textContent = firstLetter;
+    // Random-ish color based on author name length
+    const colors = ['#FF9800', '#2196F3', '#9C27B0', '#E91E63', '#4CAF50'];
+    const colorIndex = (work.author || '').length % colors.length;
+    modalAvatar.style.backgroundColor = colors[colorIndex];
+  }
 
   // Description with line breaks preserved
   if (modalDescription) {
