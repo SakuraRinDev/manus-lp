@@ -1,6 +1,6 @@
 // ========================================
 // Google Apps Script for Manus Works Gallery
-// 承認ワークフロー対応版
+// コンプライアンスチェック機能付き
 // ========================================
 //
 // スプレッドシートのカラム順:
@@ -12,24 +12,27 @@
 // 5: 作品の概要・アピールポイント（description）
 // 6: 作品のスクリーンショット（元画像URL）
 // 7: 作品のリンク（workUrl）
-// 8: Status（PENDING / APPROVED / REJECTED）
-// 9: Public_Image_URL（公開用画像URL - 自動生成）
+// 8: （未使用）
+// 9: Status（PENDING / APPROVED / REJECTED）
+// 10: Public_Image_URL
+// 11: Compliance_Result (AI判定: COMPLIANT / FLAGGED / ERROR)
+// 12: Compliance_Reason (AI判定理由)
 //
 // --- Setup Instructions ---
-// 1. スプレッドシートの列I に「Status」、列J に「Public_Image_URL」ヘッダーを追加
-// 2. Google Drive に「01_approved」フォルダを作成し、「リンクを知っている全員」に共有
-// 3. 下記の APPROVED_FOLDER_ID を作成したフォルダのIDに置き換え
-// 4. このスクリプトをデプロイ → Web App URLを取得
-// 5. トリガー設定: onEdit関数をスプレッドシートの編集時に実行するよう設定
-//
+// 1. スプレッドシートのスクリプトプロパティに 'OPENROUTER_API_KEY' を設定してください。
+// 2. 列L (Index 11) に "Compliance_Result"、列M (Index 12) に "Compliance_Reason" ヘッダーを追加。
+// 3. トリガー設定: 'checkComplianceForPendingRows' を「フォーム送信時」または「時間主導型」で設定。
 
 // ========================================
 // 設定
 // ========================================
 const CONFIG = {
   // 承認済み画像を格納するフォルダID
-  // フォルダURLが https://drive.google.com/drive/folders/XXXX なら、XXXXの部分
   APPROVED_FOLDER_ID: '1oQSx-hBHCt1J9pQG_x-7lnJXTUMXT3Q_',
+
+  // OpenRouter API設定
+  OPENROUTER_API_URL: 'https://openrouter.ai/api/v1/chat/completions',
+  MODEL_NAME: 'openai/gpt-4o', // または 'anthropic/claude-3.5-sonnet'
 
   // カラムインデックス（0始まり）
   COL: {
@@ -41,13 +44,15 @@ const CONFIG = {
     DESCRIPTION: 5,
     ORIGINAL_IMAGE: 6,
     PROJECT_URL: 7,
-    STATUS: 8,
-    PUBLIC_IMAGE_URL: 9
+    STATUS: 9,
+    PUBLIC_IMAGE_URL: 10,
+    COMPLIANCE_RESULT: 11, // 新規
+    COMPLIANCE_REASON: 12  // 新規
   }
 };
 
 // ========================================
-// Web API: 承認済み作品のみ返す
+// Web API: 承認済み作品のみ返す (既存)
 // ========================================
 function doGet(e) {
   const output = ContentService.createTextOutput();
@@ -64,12 +69,11 @@ function doGet(e) {
 }
 
 function getApprovedWorks() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  // doGet実行時はgetActiveSheet()が不安定な場合があるため、先頭のシートを取得
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   const data = sheet.getDataRange().getValues();
 
-  if (data.length <= 1) {
-    return [];
-  }
+  if (data.length <= 1) return [];
 
   const works = [];
   const COL = CONFIG.COL;
@@ -78,10 +82,7 @@ function getApprovedWorks() {
     const row = data[i];
     const status = (row[COL.STATUS] || '').toString().toUpperCase().trim();
 
-    // APPROVED のみ返す
-    if (status !== 'APPROVED') {
-      continue;
-    }
+    if (status !== 'APPROVED') continue;
 
     const work = {
       id: i,
@@ -105,35 +106,256 @@ function getApprovedWorks() {
 }
 
 // ========================================
-// onEdit トリガー: ステータス変更時に画像を公開
-// ※シンプルトリガー(onEdit)ではなく、インストール可能リガーとして登録する関数
+// コンプライアンスチェック機能 (新規)
+// ========================================
+
+/**
+ * 未処理の行に対してコンプライアンスチェックを実行する
+ * トリガー設定推奨: フォーム送信時 or 時間主導型
+ */
+function checkComplianceForPendingRows() {
+  console.log('=== Compliance Check Started ===');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  const COL = CONFIG.COL;
+
+  // ヘッダー行をスキップ
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const resultCell = sheet.getRange(i + 1, COL.COMPLIANCE_RESULT + 1);
+    const reasonCell = sheet.getRange(i + 1, COL.COMPLIANCE_REASON + 1);
+
+    // すでに判定済み、またはデータがない行はスキップ
+    if (row[COL.COMPLIANCE_RESULT] || !row[COL.TITLE]) {
+      continue;
+    }
+
+    try {
+      console.log(`Checking row ${i + 1}: ${row[COL.TITLE]}`);
+
+      // 判定中ステータスをセット
+      resultCell.setValue('CHECKING...');
+      SpreadsheetApp.flush();
+
+      // チェック実行
+      const result = executeOpenRouterCheck(row);
+
+      // 結果書き込み
+      resultCell.setValue(result.is_compliant ? 'COMPLIANT' : 'FLAGGED');
+      reasonCell.setValue(`[${result.risk_level}] ${result.reason}`);
+
+      console.log(`Row ${i + 1} Result:`, result);
+
+      // 自動承認ロジック
+      if (result.is_compliant) {
+        console.log(`Auto-approving row ${i + 1}`);
+        const statusCell = sheet.getRange(i + 1, COL.STATUS + 1);
+        statusCell.setValue('APPROVED');
+        // 公開URL生成処理も実行
+        processApproval(sheet, i + 1);
+      }
+
+    } catch (e) {
+      console.error(`Error on row ${i + 1}:`, e);
+      resultCell.setValue('ERROR');
+      reasonCell.setValue(e.message);
+    }
+  }
+}
+
+/**
+ * OpenRouter APIを呼び出して判定を行う
+ */
+function executeOpenRouterCheck(row) {
+  const COL = CONFIG.COL;
+  const apiKey = PropertiesService.getScriptProperties().getProperty('OPENROUTER_API_KEY');
+
+  if (!apiKey) {
+    throw new Error('Script Property "OPENROUTER_API_KEY" is not set.');
+  }
+
+  // プロンプト構築
+  const description = row[COL.DESCRIPTION] || '';
+  const title = row[COL.TITLE] || '';
+  const imageUrl = row[COL.ORIGINAL_IMAGE] || '';
+  const projectUrl = row[COL.PROJECT_URL] || '';
+
+  // リンク先テキスト取得 (簡易)
+  let linkContent = "";
+  if (projectUrl) {
+    try {
+      linkContent = fetchUrlContent(projectUrl);
+    } catch (e) {
+      linkContent = "(Link access failed: " + e.message + ")";
+    }
+  }
+
+  // メッセージの構築 (マルチモーダル)
+  const messages = [
+    {
+      role: "system",
+      content: `あなたはコンテンツモデレーターです。以下の基準に基づいて、提供されたコンテンツが適切かどうか判定してください。
+      
+      【判定基準 - 以下の要素が含まれる場合はNG (is_compliant: false)】
+      1. アダルト・性的なコンテンツ（露出過多、性的描写、アダルトサイトへのリンク）
+      2. 暴力・グロテスク（流血、身体的損傷）
+      3. ヘイトスピーチ・差別
+      4. 詐欺・スパム・マルウェア
+      
+      【特にURLについての注意】
+      - リンク先の内容が取得できない場合でも、URL文字列自体に「アダルトサイトの特徴（有名アダルトドメイン、性的キーワード）」が含まれる場合はリスクありとみなしてください。
+      - 疑わしい場合は安全側に倒して FLAGGED (is_compliant: false) としてください。
+
+      回答は以下のJSON形式のみで出力してください:
+      {
+        "is_compliant": boolean,
+        "risk_level": "LOW" | "MEDIUM" | "HIGH",
+        "category": "ADULT" | "VIOLENCE" | "SPAM" | "NONE" | "OTHER",
+        "reason": "具体的な理由（日本語）"
+      }`
+    },
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: `Title: ${title}\nDescription: ${description}\nTarget URL: ${projectUrl}\nLink Content Summary: ${linkContent}\n\nこの作品情報のコンプライアンスチェックを行ってください。特にURL先が不適切なコンテンツでないか厳格に確認してください。`
+        }
+      ]
+    }
+  ];
+
+  // 画像がある場合は追加
+  if (imageUrl) {
+    const base64Image = getDriveImageAsBase64(imageUrl);
+    if (base64Image) {
+      messages[1].content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/jpeg;base64,${base64Image}`
+        }
+      });
+    } else if (imageUrl.startsWith('http')) {
+      // Drive以外のURLの場合（OpenRouterが直接アクセスできる場合）
+      messages[1].content.push({
+        type: "image_url",
+        image_url: { url: imageUrl }
+      });
+    }
+  }
+
+  const payload = {
+    model: CONFIG.MODEL_NAME,
+    messages: messages,
+    response_format: { type: "json_object" }
+  };
+
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://script.google.com',
+      'X-Title': 'Manus Works Gallery Checker'
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(CONFIG.OPENROUTER_API_URL, options);
+  const responseCode = response.getResponseCode();
+  const responseBody = response.getContentText();
+
+  if (responseCode !== 200) {
+    throw new Error(`API Error (${responseCode}): ${responseBody}`);
+  }
+
+  console.log('API Response Body:', responseBody); // デバッグ用ログ
+
+  let json;
+  try {
+    json = JSON.parse(responseBody);
+  } catch (e) {
+    throw new Error(`Failed to parse API response body: ${e.message}. Body: ${responseBody}`);
+  }
+
+  if (!json.choices || !json.choices[0] || !json.choices[0].message) {
+    throw new Error(`Unexpected API response structure: ${responseBody}`);
+  }
+
+  const content = json.choices[0].message.content;
+  console.log('Model Content:', content); // デバッグ用ログ
+
+  try {
+    return JSON.parse(content);
+  } catch (e) {
+    // JSONとして解析できない場合は、AIが拒否したかエラーメッセージを返した可能性がある
+    // 安全側に倒してFLAGGED扱いにする
+    console.warn('Failed to parse model content as JSON. Content:', content);
+    return {
+      is_compliant: false,
+      risk_level: "HIGH",
+      category: "OTHER",
+      reason: "AIからの応答が不正な形式でした（コンテンツ制限の可能性があります）。: " + content
+    };
+  }
+}
+
+/**
+ * Google Driveの画像URLからBase64データを取得する
+ */
+function getDriveImageAsBase64(url) {
+  const fileId = extractFileId(url);
+  if (!fileId) return null;
+
+  try {
+    const file = DriveApp.getFileById(fileId);
+    const blob = file.getBlob();
+    // 画像サイズが大きいとAPI制限にかかる可能性があるため、必要ならリサイズ処理を入れる
+    // ここではそのままBase64化
+    return Utilities.base64Encode(blob.getBytes());
+  } catch (e) {
+    console.error('Failed to encode image:', e);
+    return null;
+  }
+}
+
+/**
+ * 外部URLのコンテンツテキストを簡易取得する
+ */
+function fetchUrlContent(url) {
+  try {
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (response.getResponseCode() === 200) {
+      const text = response.getContentText();
+      // HTMLタグを除去して先頭1000文字程度を抽出
+      const plainText = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      return plainText.substring(0, 1000);
+    }
+  } catch (e) {
+    console.warn('URL Fetch failed:', e.message);
+  }
+  return "";
+}
+
+// ========================================
+// onEdit トリガー: Status変更時の処理 (既存)
 // ========================================
 function installedOnEdit(e) {
   console.log('=== installedOnEdit triggered ===');
-  console.log('Event object:', JSON.stringify(e));
+  // ... (既存のログ出力)
 
   const sheet = e.source.getActiveSheet();
   const range = e.range;
   const row = range.getRow();
   const col = range.getColumn();
 
-  console.log('Row:', row, 'Col:', col, 'Expected Status Col:', CONFIG.COL.STATUS + 1);
+  // Status列（J列 = 9 -> +1 = 10）
+  if (col !== CONFIG.COL.STATUS + 1) return;
 
-  // Status列（I列 = 9）が編集された場合のみ処理
-  if (col !== CONFIG.COL.STATUS + 1) {
-    console.log('Not Status column, skipping');
-    return;
-  }
-
-  // e.value ではなく、セルの値を直接読み取る
   const newValue = range.getValue().toString().toUpperCase().trim();
-  console.log('New value (from cell):', newValue);
-
   if (newValue === 'APPROVED') {
-    console.log('Processing approval for row:', row);
     processApproval(sheet, row);
-  } else {
-    console.log('Value is not APPROVED, skipping');
   }
 }
 
@@ -141,127 +363,94 @@ function processApproval(sheet, row) {
   console.log('=== processApproval started ===');
   const COL = CONFIG.COL;
   const originalImageUrl = sheet.getRange(row, COL.ORIGINAL_IMAGE + 1).getValue();
-  console.log('Original Image URL (G column):', originalImageUrl);
 
-  if (!originalImageUrl) {
-    console.log('ERROR: Original image URL is empty');
-    return;
-  }
+  if (!originalImageUrl) return;
 
   try {
-    // Google DriveのファイルIDを抽出
     const fileId = extractFileId(originalImageUrl);
-    console.log('Extracted file ID:', fileId);
+    if (!fileId) return;
 
-    if (!fileId) {
-      console.log('ERROR: Could not extract file ID from:', originalImageUrl);
-      return;
-    }
-
-    // ファイルを公開フォルダにコピー
-    console.log('Copying to approved folder...');
     const publicUrl = copyToApprovedFolder(fileId);
-    console.log('Public URL:', publicUrl);
-
     if (publicUrl) {
-      // Public_Image_URL列に書き込み
       sheet.getRange(row, COL.PUBLIC_IMAGE_URL + 1).setValue(publicUrl);
-      console.log('SUCCESS: Written to column J');
     }
   } catch (error) {
-    console.log('ERROR:', error.message);
-    console.log('Stack:', error.stack);
+    console.log('ERROR:', error);
   }
 }
 
 function extractFileId(url) {
   if (!url) return null;
-
-  // https://drive.google.com/open?id=FILE_ID
   const openMatch = url.match(/[?&]id=([^&]+)/);
   if (openMatch) return openMatch[1];
-
-  // https://drive.google.com/file/d/FILE_ID/view
   const fileMatch = url.match(/\/file\/d\/([^\/]+)/);
   if (fileMatch) return fileMatch[1];
-
   return null;
 }
 
 function copyToApprovedFolder(fileId) {
   const file = DriveApp.getFileById(fileId);
   const approvedFolder = DriveApp.getFolderById(CONFIG.APPROVED_FOLDER_ID);
-
-  // ファイルをコピー
   const copiedFile = file.makeCopy(file.getName(), approvedFolder);
-
-  // 公開設定: リンクを知っている全員が閲覧可能
   copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-  // 公開URL生成（lh3.googleusercontent.com形式 = クロスオリジンで動作）
-  const publicUrl = 'https://lh3.googleusercontent.com/d/' + copiedFile.getId();
-
-  return publicUrl;
+  return 'https://lh3.googleusercontent.com/d/' + copiedFile.getId();
 }
 
 // ========================================
-// ユーティリティ関数
+// ユーティリティ関数 (既存)
 // ========================================
 function convertDriveLink(url) {
   if (!url) return '';
-
   const fileId = extractFileId(url);
-  if (fileId) {
-    return 'https://drive.google.com/uc?export=view&id=' + fileId;
-  }
-
-  return url;
+  return fileId ? 'https://drive.google.com/uc?export=view&id=' + fileId : url;
 }
 
 function mapCategory(categoryInput) {
   const categoryMap = {
-    'Apps & Tools（Webアプリ、Chrome拡張機能、自動化ツールなど）': 'apps',
     'Apps & Tools': 'apps',
     'apps': 'apps',
-    'Documents（プロンプト集、AI活用のノウハウ記事、電子書籍など）': 'documents',
     'Documents': 'documents',
     'documents': 'documents',
-    'Data & Analysis（データ分析レポート、予測モデル、可視化ダッシュボードなど）': 'data',
-    'Data & Analysis': 'data',
+    'Data': 'data',
     'data': 'data',
-    'Creative（AI生成画像、動画、音楽、デザイン、小説など）': 'creative',
     'Creative': 'creative',
     'creative': 'creative',
-    'Others（上記に当てはまらないもの）': 'others',
     'Others': 'others',
-    'others': 'others'
+    'others': 'others',
+    // 文字列マッチング用にキーを追加する場合はここに
   };
-
-  return categoryMap[categoryInput] || 'others';
+  // 部分一致やデフォルト処理
+  for (const key in categoryMap) {
+    if (categoryInput.toString().includes(key)) return categoryMap[key];
+  }
+  return 'others';
 }
 
 // ========================================
-// テスト・セットアップ用関数
+// セットアップ用関数 (更新)
 // ========================================
-function testGetApprovedWorks() {
-  const works = getApprovedWorks();
-  Logger.log(JSON.stringify(works, null, 2));
-}
-
-// 初回セットアップ: installedOnEditトリガーを登録
-function setupTrigger() {
+function setupAllTriggers() {
   const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
 
-  // 既存のトリガーをすべて削除（クリーンアップ）
-  triggers.forEach(trigger => {
-    ScriptApp.deleteTrigger(trigger);
-  });
-
-  // 新しいトリガーを作成
+  // 1. 承認用トリガー (onEdit)
   ScriptApp.newTrigger('installedOnEdit')
     .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
     .onEdit()
     .create();
 
-  Logger.log('installedOnEdit trigger has been set up.');
+  // 2. コンプライアンスチェック用トリガー (フォーム送信時)
+  // ※フォームが紐付いている場合
+  // ScriptApp.newTrigger('checkComplianceForPendingRows')
+  //   .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+  //   .onFormSubmit()
+  //   .create();
+
+  // 代替: 時間主導型 (10分おきなど)
+  ScriptApp.newTrigger('checkComplianceForPendingRows')
+    .timeBased()
+    .everyMinutes(10)
+    .create();
+
+  Logger.log('All triggers have been set up.');
 }

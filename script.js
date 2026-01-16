@@ -180,7 +180,7 @@ initParallax();
 // Configuration
 const GALLERY_CONFIG = {
   // Google Apps Script Web App URL (set after deployment)
-  API_URL: 'https://script.google.com/macros/s/AKfycbzi7loloNHdYq59NXkfth2T1elyVsdCz9zXlu2mYeysEqkD7SCgsdUkFDRXiOhKkhH8/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxhvuzgxJAc1Hs1_ONo8qssXsIFTFcAgUlfKLRttHHEAN1aaP5Q5D3zP3j8sTwjPPpB/exec',
   // Category mapping
   categories: {
     'apps': 'Apps & Tools',
