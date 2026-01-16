@@ -1106,16 +1106,12 @@ section {
 
 
 
-.modal-description {
-  display: inline;
-  color: var(--color-gray-800);
-}
-
-color: var(--color-gray-500);
-margin-bottom: 8px;
-font-weight: 600;
-letter-spacing: 0.1em;
-text-transform: uppercase;
+.modal-category {
+  color: var(--color-gray-500);
+  margin-bottom: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .modal-title {
