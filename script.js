@@ -9,7 +9,39 @@ document.addEventListener('DOMContentLoaded', () => {
   initSmoothScroll();
   initNavbarScroll();
   initHeroAnimation();
+  initBackgroundMusic();
 });
+
+// ========================================
+// Background Music
+// ========================================
+
+function initBackgroundMusic() {
+  const bgMusic = document.getElementById('bg-music');
+  if (!bgMusic) return;
+
+  // Set volume to 0.6
+  bgMusic.volume = 0.6;
+
+  // Try to play immediately (may be blocked by browser)
+  const playPromise = bgMusic.play();
+
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      // Autoplay was blocked, wait for user interaction
+      const startMusic = () => {
+        bgMusic.play().catch(() => { });
+        document.removeEventListener('click', startMusic);
+        document.removeEventListener('touchstart', startMusic);
+        document.removeEventListener('keydown', startMusic);
+      };
+
+      document.addEventListener('click', startMusic, { once: true });
+      document.addEventListener('touchstart', startMusic, { once: true });
+      document.addEventListener('keydown', startMusic, { once: true });
+    });
+  }
+}
 
 // ========================================
 // Hero Background Video
@@ -17,26 +49,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const HERO_VIDEOS = {
   // Vertical videos (416x752) - for mobile
-  vertical: [
-    'Assets/background/grok-video-10f48f98-0e4c-4b16-879e-204d971305f9.mp4',
-    'Assets/background/grok-video-17d08758-2de1-4818-92af-06aa31e3f83a.mp4',
-    'Assets/background/grok-video-29589d91-8794-46aa-bf98-0519e5f1b501.mp4',
-    'Assets/background/grok-video-4a05ae35-8237-4e7d-99b1-862acc7ce500.mp4',
-    'Assets/background/grok-video-510c9527-e909-4fca-9219-e29e0dcdabe1.mp4',
-    'Assets/background/grok-video-788f0618-32bc-4a13-819b-0b4a24d1e5e6.mp4',
-    'Assets/background/grok-video-78dbda49-2cfb-4820-b4b1-2700931aa382.mp4',
-    'Assets/background/grok-video-8a18a99a-494f-4e0f-897c-1b877e73001c.mp4',
-    'Assets/background/grok-video-8c1d953e-2d0b-41a6-a744-1ed6cf2d82cb.mp4',
-    'Assets/background/grok-video-a9dca478-5ef0-4f87-8683-7af8aad71491.mp4',
-    'Assets/background/grok-video-b336bc5b-a70d-4938-82a1-31594df351e3.mp4',
-    'Assets/background/grok-video-d4cbc2e0-301e-4914-8cb2-b65001c6ac31.mp4'
+  mobile: [
+    'Assets/background/mobile/grok-video-10f48f98-0e4c-4b16-879e-204d971305f9.mp4',
+    'Assets/background/mobile/grok-video-17d08758-2de1-4818-92af-06aa31e3f83a.mp4',
+    'Assets/background/mobile/grok-video-29589d91-8794-46aa-bf98-0519e5f1b501.mp4',
+    'Assets/background/mobile/grok-video-3f895949-f41c-4a4b-8cdc-5e2767ccac42.mp4',
+    'Assets/background/mobile/grok-video-410daabb-48c4-49c7-a2d7-de537b5f6567.mp4',
+    'Assets/background/mobile/grok-video-4a05ae35-8237-4e7d-99b1-862acc7ce500.mp4',
+    'Assets/background/mobile/grok-video-510c9527-e909-4fca-9219-e29e0dcdabe1.mp4',
+    'Assets/background/mobile/grok-video-788f0618-32bc-4a13-819b-0b4a24d1e5e6.mp4',
+    'Assets/background/mobile/grok-video-78dbda49-2cfb-4820-b4b1-2700931aa382.mp4',
+    'Assets/background/mobile/grok-video-8a18a99a-494f-4e0f-897c-1b877e73001c.mp4',
+    'Assets/background/mobile/grok-video-8c1d953e-2d0b-41a6-a744-1ed6cf2d82cb.mp4',
+    'Assets/background/mobile/grok-video-a9dca478-5ef0-4f87-8683-7af8aad71491.mp4',
+    'Assets/background/mobile/grok-video-b336bc5b-a70d-4938-82a1-31594df351e3.mp4',
+    'Assets/background/mobile/grok-video-d4cbc2e0-301e-4914-8cb2-b65001c6ac31.mp4'
   ],
   // Horizontal videos (688x464) - for desktop
-  horizontal: [
-    'Assets/background/grok-video-2082c614-ee35-4d75-bae5-e234d53b3292.mp4',
-    'Assets/background/grok-video-9fa998d3-3f4a-4cd8-a8ea-56656b0b5765.mp4',
-    'Assets/background/grok-video-e0e4a9b9-04db-41a3-b972-735c447b041a.mp4',
-    'Assets/background/grok-video-e88b4754-8a3c-4599-953b-ba88d3d58422.mp4'
+  desktop: [
+    'Assets/background/desktop/grok-video-2082c614-ee35-4d75-bae5-e234d53b3292.mp4',
+    'Assets/background/desktop/grok-video-9fa998d3-3f4a-4cd8-a8ea-56656b0b5765.mp4',
+    'Assets/background/desktop/grok-video-e0e4a9b9-04db-41a3-b972-735c447b041a.mp4',
+    'Assets/background/desktop/grok-video-e88b4754-8a3c-4599-953b-ba88d3d58422.mp4'
   ]
 };
 
@@ -49,7 +83,7 @@ function initHeroVideo() {
   // Select video based on screen orientation/size (always different from last)
   function selectAndPlayVideo() {
     const isMobile = window.innerWidth <= 768;
-    const videos = isMobile ? HERO_VIDEOS.vertical : HERO_VIDEOS.horizontal;
+    const videos = isMobile ? HERO_VIDEOS.mobile : HERO_VIDEOS.desktop;
 
     // Filter out the last played video to ensure variety
     const availableVideos = videos.filter(v => v !== lastVideoSrc);
@@ -263,7 +297,7 @@ initParallax();
 // Configuration
 const GALLERY_CONFIG = {
   // Google Apps Script Web App URL (set after deployment)
-  API_URL: 'https://script.google.com/macros/s/AKfycbxhvuzgxJAc1Hs1_ONo8qssXsIFTFcAgUlfKLRttHHEAN1aaP5Q5D3zP3j8sTwjPPpB/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzJQfZSjB1tdBs_Az7fjznJspkzgTbnrqhP3qAY1nNgG7dAQW3qn4wiAQ3o_gezVyUF/exec',
   // Category mapping
   categories: {
     'apps': 'Apps & Tools',
@@ -512,8 +546,9 @@ function renderWorks() {
 // Create work card HTML
 function createWorkCard(work, index) {
   const categoryLabel = GALLERY_CONFIG.categories[work.category] || work.category;
-  const imageHtml = work.imageUrl
-    ? `<img src="${escapeHtml(work.imageUrl)}" alt="${escapeHtml(work.title)}" loading="lazy">`
+  const validImageUrl = isValidUrl(work.imageUrl) ? work.imageUrl : null;
+  const imageHtml = validImageUrl
+    ? `<img src="${escapeHtml(validImageUrl)}" alt="${escapeHtml(work.title)}" loading="lazy">`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -522,7 +557,7 @@ function createWorkCard(work, index) {
 
   return `
     <article class="gallery-card" data-index="${index}">
-      <div class="gallery-card-image ${work.imageUrl ? '' : 'no-image'}">
+      <div class="gallery-card-image ${validImageUrl ? '' : 'no-image'}">
         ${imageHtml}
       </div>
       <div class="gallery-card-content">
@@ -551,8 +586,9 @@ function openModal(work) {
   const modalTwitter = document.getElementById('modal-twitter');
   const workLink = document.getElementById('modal-work-link');
 
+  const validImageUrl = isValidUrl(work.imageUrl) ? work.imageUrl : '';
   if (modalImage) {
-    modalImage.src = work.imageUrl || '';
+    modalImage.src = validImageUrl;
     modalImage.alt = work.title;
   }
   if (modalCategory) modalCategory.textContent = categoryLabel;
