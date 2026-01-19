@@ -97,6 +97,7 @@ function onOpen() {
     .addSeparator()
     .addItem('新規投稿にPENDINGを設定', 'initializePendingStatus')
     .addItem('管理用ヘッダーを追加', 'addAdminHeaders')
+    .addItem('画像URL再生成', 'regeneratePublicImageUrls')
     .addSeparator()
     .addItem('トリガー設定', 'setupAllTriggers')
     .addItem('接続テスト', 'testConnection')
@@ -231,14 +232,15 @@ function convertDriveLink(url) {
   if (!url) return '';
   url = String(url).trim();
 
-  // 既にuc?export=view形式ならそのまま
-  if (url.includes('drive.google.com/uc?export=view')) {
+  // 既にlh3形式ならそのまま
+  if (url.includes('lh3.googleusercontent.com')) {
     return url;
   }
 
   const fileId = extractFileId(url);
   if (fileId) {
-    return 'https://drive.google.com/uc?export=view&id=' + fileId;
+    // lh3形式を返す（最も信頼性の高い直接リンク）
+    return 'https://lh3.googleusercontent.com/d/' + fileId + '=w1000';
   }
   return url;
 }
@@ -678,14 +680,15 @@ function copyToApprovedFolder(fileId) {
     const newName = `${timestamp}_${file.getName()}`;
 
     const copiedFile = file.makeCopy(newName, approvedFolder);
-    copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // 全員がアクセス可能に設定
+    copiedFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
 
-    // uc?export=view形式を返す（最も安定した直接リンク）
-    return 'https://drive.google.com/uc?export=view&id=' + copiedFile.getId();
+    // lh3形式を返す（最も信頼性の高い直接リンク）
+    return 'https://lh3.googleusercontent.com/d/' + copiedFile.getId() + '=w1000';
   } catch (e) {
     console.error('Copy to approved folder failed:', e);
     // フォールバック
-    return 'https://drive.google.com/uc?export=view&id=' + fileId;
+    return 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1000';
   }
 }
 
@@ -920,4 +923,63 @@ function showSetupGuide() {
 
   console.log(guide);
   SpreadsheetApp.getUi().alert(guide);
+}
+
+// ========================================
+// 画像URL再生成（既存承認済み作品用）
+// ========================================
+
+/**
+ * 承認済み作品の画像URLを再生成する
+ * PUBLIC_IMAGE_URLが空またはアクセス不可の場合に使用
+ */
+function regeneratePublicImageUrls() {
+  const sheet = getTargetSheet();
+  const data = sheet.getDataRange().getValues();
+  const COL = CONFIG.COL;
+  let count = 0;
+  let errorCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = normalizeStatus(row[COL.STATUS]);
+
+    // 承認済みの作品のみ処理
+    if (status !== CONFIG.STATUS.APPROVED) continue;
+
+    // タイトルがない行はスキップ
+    if (!row[COL.TITLE]) continue;
+
+    const originalImageUrl = row[COL.ORIGINAL_IMAGE];
+    if (!originalImageUrl) continue;
+
+    try {
+      const fileId = extractFileId(originalImageUrl);
+      if (!fileId) {
+        console.log(`Row ${i + 1}: Could not extract file ID`);
+        continue;
+      }
+
+      console.log(`Processing row ${i + 1}: ${row[COL.TITLE]}`);
+      const publicUrl = copyToApprovedFolder(fileId);
+
+      if (publicUrl) {
+        sheet.getRange(i + 1, COL.PUBLIC_IMAGE_URL + 1).setValue(publicUrl);
+        console.log(`Row ${i + 1}: Updated PUBLIC_IMAGE_URL to ${publicUrl}`);
+        count++;
+      }
+    } catch (e) {
+      console.error(`Row ${i + 1} Error:`, e.message);
+      errorCount++;
+    }
+
+    // API制限を考慮
+    Utilities.sleep(500);
+  }
+
+  SpreadsheetApp.getUi().alert(
+    `画像URL再生成完了\n\n` +
+    `更新件数: ${count}件\n` +
+    `エラー: ${errorCount}件`
+  );
 }

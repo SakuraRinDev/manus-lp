@@ -18,19 +18,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initBackgroundMusic() {
   const bgMusic = document.getElementById('bg-music');
-  if (!bgMusic) return;
+  const musicControl = document.getElementById('music-control');
+
+  console.log('initBackgroundMusic called', { bgMusic, musicControl });
+
+  if (!bgMusic || !musicControl) {
+    console.error('Missing elements:', { bgMusic, musicControl });
+    return;
+  }
 
   // Set volume to 0.6
   bgMusic.volume = 0.6;
+
+  // Music control button handler
+  musicControl.addEventListener('click', () => {
+    console.log('Music control clicked, paused:', bgMusic.paused);
+    if (bgMusic.paused) {
+      bgMusic.play().then(() => {
+        console.log('Music started playing');
+        musicControl.classList.add('playing');
+      }).catch((err) => {
+        console.error('Failed to play music:', err);
+      });
+    } else {
+      console.log('Music paused');
+      bgMusic.pause();
+      musicControl.classList.remove('playing');
+    }
+  });
 
   // Try to play immediately (may be blocked by browser)
   const playPromise = bgMusic.play();
 
   if (playPromise !== undefined) {
-    playPromise.catch(() => {
+    playPromise.then(() => {
+      // Autoplay succeeded
+      musicControl.classList.add('playing');
+    }).catch(() => {
       // Autoplay was blocked, wait for user interaction
       const startMusic = () => {
-        bgMusic.play().catch(() => { });
+        bgMusic.play().then(() => {
+          musicControl.classList.add('playing');
+        }).catch(() => { });
         document.removeEventListener('click', startMusic);
         document.removeEventListener('touchstart', startMusic);
         document.removeEventListener('keydown', startMusic);
