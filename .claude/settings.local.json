@@ -15,7 +15,9 @@
       "mcp__plugin_playwright_playwright__browser_network_requests",
       "mcp__plugin_playwright_playwright__browser_evaluate",
       "mcp__plugin_touchdesigner_touchdesigner__td_pane",
-      "mcp__plugin_playwright_playwright__browser_close"
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Skill(agent-browser)",
+      "Skill(agent-browser:*)"
     ]
   }
 }
