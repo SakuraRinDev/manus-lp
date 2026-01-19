@@ -23,7 +23,7 @@
         <a href="#works">Works</a>
         <a href="#gallery">Gallery</a>
         <a href="#schedule">Schedule</a>
-        <a href="#join" class="nav-cta">Join Now</a>
+        <a href="#how-to-join" class="nav-cta">Join Now</a>
       </div>
     </div>
   </nav>
@@ -32,7 +32,7 @@
   <section class="hero">
     <!-- Background Video -->
     <div class="hero-video-container">
-      <video class="hero-video" id="hero-video" autoplay muted playsinline>
+      <video class="hero-video" id="hero-video" autoplay playsinline>
         <!-- Source will be set by JavaScript -->
       </video>
       <div class="hero-video-overlay"></div>
@@ -48,8 +48,7 @@
         未踏の頂へ、Manusとなら。
       </p>
       <div class="hero-cta">
-        <a href="#join" class="btn btn-primary">登る</a>
-        <a href="#about" class="btn btn-secondary">詳しく見る</a>
+        <a href="#how-to-join" class="btn btn-primary">登る</a>
       </div>
     </div>
   </section>
@@ -86,6 +85,72 @@
           <div class="stat">
             <span class="stat-number">1</span>
             <span class="stat-label">Summit</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How to Join Section -->
+  <section id="how-to-join" class="how-to-join">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">01.5</span>
+        <h2 class="section-title">コミュニティでイベントを楽しむ</h2>
+      </div>
+      <div class="how-to-content">
+        <div class="how-to-steps">
+          <div class="how-to-step">
+            <div class="how-to-step-number">1</div>
+            <div class="how-to-step-content">
+              <h4>LINEオープンチャットに参加する</h4>
+              <p>ManusWeek部屋に参加して、コミュニティと一緒にイベントを楽しもう。</p>
+              <a href="https://line.me/ti/g2/Y5dhGmn5EvqdzKHH8nqfMg_7towxh5MqPlLYGQ?utm_source=invitation&utm_medium=link_copy&utm_campaign=default" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-small">
+                オープンチャットに参加
+              </a>
+            </div>
+          </div>
+          <div class="how-to-step">
+            <div class="how-to-step-number">2</div>
+            <div class="how-to-step-content">
+              <h4>クレジットをもらう</h4>
+              <p>Manusのクレジットを取得して、準備を整えよう。</p>
+              <a href="https://manus.im/live-events/ManusJP_260118" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-small">
+                クレジットを取得
+              </a>
+            </div>
+          </div>
+          <div class="how-to-step">
+            <div class="how-to-step-number">3</div>
+            <div class="how-to-step-content">
+              <h4>作る</h4>
+              <p>Manusを使って、あなたの作品を作ろう。アイデアを形にする時間です。</p>
+              <a href="https://manus.im/app" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-small">
+                Manusへ
+              </a>
+            </div>
+          </div>
+          <div class="how-to-step">
+            <div class="how-to-step-number">4</div>
+            <div class="how-to-step-content">
+              <h4>Google Formで登録する</h4>
+              <p>作品が完成したら、Google Formから登録してください。<br>
+              <small>※審査の後、承認された作品が公開されます。</small></p>
+              <a href="https://docs.google.com/forms/d/e/1FAIpQLScO1OUVPT5Pk-IDDXDm3FXQx84FqWohNC5r7888tTM6-H_ETw/viewform" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-small">
+                作品を登録する
+              </a>
+            </div>
+          </div>
+          <div class="how-to-step">
+            <div class="how-to-step-number">5</div>
+            <div class="how-to-step-content">
+              <h4>1月24日 大阪AI文化万博にて</h4>
+              <p><strong>Manus賞</strong> と <strong>SakuraRin賞</strong> の発表を待とう！<br>
+              <small>大阪に行ける人は、こちらから登録してください。</small></p>
+              <a href="https://kansaiaicampus.connpass.com/event/376944/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-small">
+                大阪AI文化万博に登録
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -204,7 +269,7 @@
       <!-- Submit CTA -->
       <div class="gallery-cta">
         <p>あなたの作品も追加しませんか？</p>
-        <a href="https://forms.gle/1iMJGYn3CucV5CVk9" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLScO1OUVPT5Pk-IDDXDm3FXQx84FqWohNC5r7888tTM6-H_ETw/viewform" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
           作品を投稿する
         </a>
       </div>
@@ -327,6 +392,16 @@
   <audio id="bg-music" loop preload="auto">
     <source src="Assets/background/music/Dawn of the First Step.wav" type="audio/wav">
   </audio>
+
+  <!-- Music Control Button -->
+  <button id="music-control" class="music-control" aria-label="音楽を再生/停止">
+    <svg class="music-icon music-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 18V6l10 6-10 6z"/>
+    </svg>
+    <svg class="music-icon music-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M6 4h4v16H6zM14 4h4v16h-4z"/>
+    </svg>
+  </button>
 
   <script src="script.js"></script>
 </body>

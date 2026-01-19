@@ -231,14 +231,14 @@ function convertDriveLink(url) {
   if (!url) return '';
   url = String(url).trim();
 
-  // 既にlh3形式ならそのまま
-  if (url.startsWith('https://lh3.googleusercontent.com/')) {
+  // 既にuc?export=view形式ならそのまま
+  if (url.includes('drive.google.com/uc?export=view')) {
     return url;
   }
 
   const fileId = extractFileId(url);
   if (fileId) {
-    return 'https://lh3.googleusercontent.com/d/' + fileId;
+    return 'https://drive.google.com/uc?export=view&id=' + fileId;
   }
   return url;
 }
@@ -680,8 +680,8 @@ function copyToApprovedFolder(fileId) {
     const copiedFile = file.makeCopy(newName, approvedFolder);
     copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-    // lh3形式のURLを返す（最も安定した直接リンク）
-    return 'https://lh3.googleusercontent.com/d/' + copiedFile.getId();
+    // uc?export=view形式を返す（最も安定した直接リンク）
+    return 'https://drive.google.com/uc?export=view&id=' + copiedFile.getId();
   } catch (e) {
     console.error('Copy to approved folder failed:', e);
     // フォールバック
