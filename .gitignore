@@ -21,3 +21,6 @@ __pycache__/
 # ZG_PROJECT specific
 ZG_PROJECT/
 *_SPEC.MD
+
+# Tool artifacts
+.playwright-mcp/

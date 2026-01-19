@@ -154,7 +154,8 @@ function copyToApprovedFolder(fileId) {
   const approvedFolder = DriveApp.getFolderById(CONFIG.APPROVED_FOLDER_ID);
   const copiedFile = file.makeCopy(file.getName(), approvedFolder);
   copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return 'https://lh3.googleusercontent.com/d/' + copiedFile.getId();
+  // uc?export=view形式を使用（より安定した画像表示）
+  return 'https://drive.google.com/uc?export=view&id=' + copiedFile.getId();
 }
 
 function convertDriveLink(url) {
