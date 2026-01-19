@@ -4,11 +4,93 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize all animations and interactions
+  initHeroVideo();
   initScrollAnimations();
   initSmoothScroll();
   initNavbarScroll();
   initHeroAnimation();
 });
+
+// ========================================
+// Hero Background Video
+// ========================================
+
+const HERO_VIDEOS = {
+  // Vertical videos (416x752) - for mobile
+  vertical: [
+    'Assets/background/grok-video-10f48f98-0e4c-4b16-879e-204d971305f9.mp4',
+    'Assets/background/grok-video-17d08758-2de1-4818-92af-06aa31e3f83a.mp4',
+    'Assets/background/grok-video-29589d91-8794-46aa-bf98-0519e5f1b501.mp4',
+    'Assets/background/grok-video-4a05ae35-8237-4e7d-99b1-862acc7ce500.mp4',
+    'Assets/background/grok-video-510c9527-e909-4fca-9219-e29e0dcdabe1.mp4',
+    'Assets/background/grok-video-788f0618-32bc-4a13-819b-0b4a24d1e5e6.mp4',
+    'Assets/background/grok-video-78dbda49-2cfb-4820-b4b1-2700931aa382.mp4',
+    'Assets/background/grok-video-8a18a99a-494f-4e0f-897c-1b877e73001c.mp4',
+    'Assets/background/grok-video-8c1d953e-2d0b-41a6-a744-1ed6cf2d82cb.mp4',
+    'Assets/background/grok-video-a9dca478-5ef0-4f87-8683-7af8aad71491.mp4',
+    'Assets/background/grok-video-b336bc5b-a70d-4938-82a1-31594df351e3.mp4',
+    'Assets/background/grok-video-d4cbc2e0-301e-4914-8cb2-b65001c6ac31.mp4'
+  ],
+  // Horizontal videos (688x464) - for desktop
+  horizontal: [
+    'Assets/background/grok-video-2082c614-ee35-4d75-bae5-e234d53b3292.mp4',
+    'Assets/background/grok-video-9fa998d3-3f4a-4cd8-a8ea-56656b0b5765.mp4',
+    'Assets/background/grok-video-e0e4a9b9-04db-41a3-b972-735c447b041a.mp4',
+    'Assets/background/grok-video-e88b4754-8a3c-4599-953b-ba88d3d58422.mp4'
+  ]
+};
+
+function initHeroVideo() {
+  const video = document.getElementById('hero-video');
+  if (!video) return;
+
+  let lastVideoSrc = null;
+
+  // Select video based on screen orientation/size (always different from last)
+  function selectAndPlayVideo() {
+    const isMobile = window.innerWidth <= 768;
+    const videos = isMobile ? HERO_VIDEOS.vertical : HERO_VIDEOS.horizontal;
+
+    // Filter out the last played video to ensure variety
+    const availableVideos = videos.filter(v => v !== lastVideoSrc);
+    const videosToChooseFrom = availableVideos.length > 0 ? availableVideos : videos;
+
+    const randomIndex = Math.floor(Math.random() * videosToChooseFrom.length);
+    const videoSrc = videosToChooseFrom[randomIndex];
+
+    lastVideoSrc = videoSrc;
+    video.src = videoSrc;
+    video.load();
+    video.play().catch(e => {
+      // Autoplay might be blocked, that's okay
+      console.log('Video autoplay was prevented:', e);
+    });
+  }
+
+  // When video ends, play a different one
+  video.addEventListener('ended', () => {
+    selectAndPlayVideo();
+  });
+
+  // Initial video selection
+  selectAndPlayVideo();
+
+  // Optionally: Change video on resize (debounced)
+  let resizeTimeout;
+  let lastIsMobile = window.innerWidth <= 768;
+
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      const currentIsMobile = window.innerWidth <= 768;
+      // Only change video if we crossed the mobile/desktop threshold
+      if (currentIsMobile !== lastIsMobile) {
+        lastIsMobile = currentIsMobile;
+        selectAndPlayVideo();
+      }
+    }, 500);
+  });
+}
 
 // Scroll-triggered fade-in animations
 function initScrollAnimations() {
@@ -158,14 +240,15 @@ function initWorkCardsAnimation() {
   });
 }
 
-// Parallax effect for hero visual
+// Parallax effect for hero video
 function initParallax() {
-  const heroVisual = document.querySelector('.hero-visual');
+  const heroVideo = document.querySelector('.hero-video');
+  if (!heroVideo) return;
 
   window.addEventListener('scroll', () => {
     const scrollY = window.scrollY;
     if (scrollY < window.innerHeight) {
-      heroVisual.style.transform = `translateY(calc(-50% + ${scrollY * 0.3}px))`;
+      heroVideo.style.transform = `translate(-50%, calc(-50% + ${scrollY * 0.2}px))`;
     }
   });
 }
