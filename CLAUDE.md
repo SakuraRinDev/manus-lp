@@ -1,73 +1,68 @@
-# AI モデル設定
+# CLAUDE.md
 
-## 使用サービス
+このファイルはClaude Codeがこのリポジトリで作業する際のガイダンスを提供します。
 
-[OpenRouter](https://openrouter.ai/) 経由で AI モデルを呼び出し。
+## プロジェクト概要
 
-## モデル
+Manus Works Collection - AIエージェント「Manus」を使用した作品を集め、展示するイベントのランディングページ。
 
-### プライマリ: Google Gemma 3 27B
+- **イベント期間**: 1.19 - 1.24
+- **主催**: Manus × SakuraRin × トキワバレー
+- **デプロイ先**: Vercel (https://manus.tokiwavalley.com)
 
-```javascript
-MODEL_NAME: 'google/gemma-3-27b-it:free'
-```
+## 技術スタック
 
-- 無料枠で利用可能
-- マルチモーダル対応（テキスト + 画像）
-- 日本語対応
+- **フロントエンド**: HTML5, CSS3, Vanilla JavaScript
+- **フォント**: IBM Plex Sans JP, Shippori Mincho
+- **ホスティング**: Vercel
+- **バックエンド**: Google Apps Script (ギャラリーAPI)
 
-### フォールバック: GPT-4o
-
-```javascript
-MODEL_NAME_LEGACY: 'openai/gpt-4o'
-```
-
-- 高精度判定が必要な場合
-- 比較テスト用
-
-## API 設定
-
-### スクリプトプロパティ
+## プロジェクト構成
 
 ```
-プロパティ名: OPENROUTER_API_KEY
-値: sk-or-v1-xxxxx
+manus-lp/
+├── index.html          # メインHTMLファイル
+├── style.css           # スタイルシート
+├── script.js           # JavaScript (アニメーション、ギャラリー、モーダル)
+├── Assets/
+│   └── background/
+│       ├── desktop/    # デスクトップ用背景動画 (横向き)
+│       ├── mobile/     # モバイル用背景動画 (縦向き)
+│       └── music/      # BGM
+└── .vercel/            # Vercel設定
 ```
 
-### リクエスト形式
+## 開発コマンド
 
-```javascript
-{
-  model: 'google/gemma-3-27b-it:free',
-  messages: [
-    { role: 'system', content: '...' },
-    { role: 'user', content: [...] }
-  ],
-  response_format: { type: 'json_object' }
-}
+```bash
+# ローカル開発サーバー起動
+python3 -m http.server 8000
+# または
+npx serve .
 ```
 
-### レスポンス形式
+## 主要機能
 
-```json
-{
-  "is_compliant": true,
-  "risk_level": "LOW",
-  "category": "NONE",
-  "reason": "問題なし"
-}
-```
+### ヒーロー動画
+- `initHeroVideo()`: 画面サイズに応じてモバイル/デスクトップ用動画を自動選択
+- 動画終了時に別の動画をランダム再生
 
-## テスト関数
+### ギャラリー
+- Google Apps Script APIから作品データを取得
+- カテゴリフィルタリング機能
+- モーダルで作品詳細表示
+- `GALLERY_CONFIG.API_URL`: APIエンドポイント設定
 
-| 関数 | 内容 |
-|------|------|
-| `testCheckSingleRow` | 選択行を Gemma 3 で判定 |
-| `testCheckSingleRowLegacy` | 選択行を GPT-4o で判定 |
-| `compareModels` | 両モデルで比較判定 |
+### アニメーション
+- `initScrollAnimations()`: スクロール連動フェードイン
+- `initHeroAnimation()`: ヒーローセクションの入場アニメーション
+- `initSmoothScroll()`: アンカーリンクのスムーススクロール
 
-## 制限
+### BGM
+- `initBackgroundMusic()`: 自動再生（ブラウザ制限時はユーザー操作後に開始）
 
-- 画像: 10MB 以下
-- URL コンテンツ: 1500 文字まで
-- レート: 1 req/sec（待機処理あり）
+## 注意点
+
+- 静的サイトのため、ビルドプロセスは不要
+- 画像URLはGoogle Drive形式からlh3形式に自動変換される
+- XSS対策として`escapeHtml()`と`sanitizeUrl()`を使用

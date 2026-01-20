@@ -364,9 +364,39 @@ section {
   text-transform: uppercase;
 }
 
+/* About Video */
+.about-video {
+  grid-column: 1 / -1;
+  margin-top: 48px;
+}
+
+.about-video iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--color-gray-200);
+}
+
 /* How to Join Section */
 .how-to-join {
   background: var(--color-gray-100);
+}
+
+.how-to-video {
+  margin-top: 64px;
+  text-align: center;
+}
+
+.how-to-video-intro {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-gray-600);
+  margin-bottom: 24px;
+}
+
+.how-to-video .about-video {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .how-to-content {
@@ -488,6 +518,92 @@ section {
 .work-card p {
   font-size: 14px;
   color: var(--color-gray-500);
+}
+
+/* Q&A Section */
+.qa {
+  background: var(--color-gray-100);
+}
+
+.qa-list {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.qa-item {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  padding: 32px;
+  transition: all var(--transition-normal);
+}
+
+.qa-item:hover {
+  border-color: var(--color-black);
+}
+
+.qa-question,
+.qa-answer {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.qa-question {
+  margin-bottom: 16px;
+}
+
+.qa-label {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.qa-question .qa-label {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+.qa-answer .qa-label {
+  background: var(--color-gray-200);
+  color: var(--color-black);
+}
+
+.qa-question p {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.6;
+  padding-top: 4px;
+}
+
+.qa-answer p {
+  font-size: 16px;
+  color: var(--color-gray-600);
+  line-height: 1.7;
+  padding-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .qa-item {
+    padding: 24px;
+  }
+
+  .qa-question p {
+    font-size: 16px;
+  }
+
+  .qa-answer p {
+    font-size: 15px;
+  }
 }
 
 /* Schedule Section */

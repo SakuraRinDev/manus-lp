@@ -17,7 +17,9 @@
       "mcp__plugin_touchdesigner_touchdesigner__td_pane",
       "mcp__plugin_playwright_playwright__browser_close",
       "Skill(agent-browser)",
-      "Skill(agent-browser:*)"
+      "Skill(agent-browser:*)",
+      "Bash(__NEW_LINE_d183d8871edda747__ echo \"\")",
+      "Bash(__NEW_LINE_cfeaee6bbc9c6228__ echo \"\")"
     ]
   }
 }
