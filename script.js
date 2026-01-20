@@ -336,7 +336,73 @@ const GALLERY_CONFIG = {
     'others': 'Others'
   },
   // Demo mode - set to true to show sample data when API_URL is empty
-  demoMode: false
+  demoMode: false,
+  // Debug mode - set to true to enable detailed logging
+  debug: true
+};
+
+// ========================================
+// Debug Logger for Gallery Images
+// ========================================
+const GalleryDebug = {
+  enabled: GALLERY_CONFIG.debug,
+
+  log(category, message, data = null) {
+    if (!this.enabled) return;
+    const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
+    const prefix = `[Gallery:${category}] ${timestamp}`;
+    if (data) {
+      console.log(prefix, message, data);
+    } else {
+      console.log(prefix, message);
+    }
+  },
+
+  warn(category, message, data = null) {
+    if (!this.enabled) return;
+    const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
+    const prefix = `[Gallery:${category}] ${timestamp}`;
+    if (data) {
+      console.warn(prefix, message, data);
+    } else {
+      console.warn(prefix, message);
+    }
+  },
+
+  error(category, message, data = null) {
+    // Errors always log regardless of debug mode
+    const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
+    const prefix = `[Gallery:${category}] ${timestamp}`;
+    if (data) {
+      console.error(prefix, message, data);
+    } else {
+      console.error(prefix, message);
+    }
+  },
+
+  // Image loading status tracker
+  imageStats: {
+    total: 0,
+    loaded: 0,
+    failed: 0,
+    pending: 0
+  },
+
+  resetImageStats() {
+    this.imageStats = { total: 0, loaded: 0, failed: 0, pending: 0 };
+  },
+
+  trackImage(status) {
+    this.imageStats[status]++;
+    this.log('ImageStats', `Status: ${status}`, { ...this.imageStats });
+  },
+
+  printImageReport() {
+    const { total, loaded, failed, pending } = this.imageStats;
+    console.log('%c=== Gallery Image Load Report ===', 'font-weight: bold; color: #2196F3');
+    console.log(`Total: ${total} | Loaded: ${loaded} | Failed: ${failed} | Pending: ${pending}`);
+    console.log(`Success Rate: ${total > 0 ? ((loaded / total) * 100).toFixed(1) : 0}%`);
+  }
 };
 
 // Sample data for demo mode
@@ -428,10 +494,13 @@ function initGallery() {
 
 // Fetch works from Google Apps Script API
 async function fetchWorks() {
+  GalleryDebug.log('API', 'Fetching works from API...');
+  GalleryDebug.resetImageStats();
   showLoading();
 
   // Use demo data if API_URL is not set
   if (!GALLERY_CONFIG.API_URL && GALLERY_CONFIG.demoMode) {
+    GalleryDebug.log('API', 'Using demo data (no API URL)');
     setTimeout(() => {
       galleryWorks = [...DEMO_WORKS];
       filteredWorks = [...galleryWorks];
@@ -441,18 +510,32 @@ async function fetchWorks() {
   }
 
   if (!GALLERY_CONFIG.API_URL) {
+    GalleryDebug.warn('API', 'No API URL configured');
     showEmpty();
     return;
   }
 
   try {
+    GalleryDebug.log('API', 'Requesting:', GALLERY_CONFIG.API_URL);
+    const startTime = performance.now();
     const response = await fetch(GALLERY_CONFIG.API_URL);
+    const fetchTime = performance.now() - startTime;
+
+    GalleryDebug.log('API', `Response received in ${fetchTime.toFixed(0)}ms`, {
+      status: response.status,
+      ok: response.ok
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    GalleryDebug.log('API', 'Data parsed', {
+      success: data.success,
+      count: data.count,
+      worksCount: data.works?.length
+    });
 
     if (data.error) {
       throw new Error(data.error);
@@ -461,13 +544,23 @@ async function fetchWorks() {
     galleryWorks = data.works || [];
     filteredWorks = [...galleryWorks];
 
+    // Log each work's image URL for debugging
+    galleryWorks.forEach((work, i) => {
+      GalleryDebug.log('Work', `[${i}] ${work.title}`, {
+        imageUrl: work.imageUrl,
+        author: work.author,
+        category: work.category
+      });
+    });
+
     if (galleryWorks.length === 0) {
+      GalleryDebug.warn('API', 'No works returned from API');
       showEmpty();
     } else {
       renderWorks();
     }
   } catch (error) {
-    console.error('Failed to fetch works:', error);
+    GalleryDebug.error('API', 'Failed to fetch works', error);
     showError();
   }
 }
@@ -531,6 +624,9 @@ function filterWorks(category) {
 
 // Render works to grid
 function renderWorks() {
+  GalleryDebug.log('Render', `Rendering ${filteredWorks.length} works`);
+  GalleryDebug.resetImageStats();
+
   const galleryLoading = document.getElementById('gallery-loading');
   const galleryError = document.getElementById('gallery-error');
   const galleryEmpty = document.getElementById('gallery-empty');
@@ -542,6 +638,7 @@ function renderWorks() {
   if (galleryGrid) galleryGrid.style.display = 'grid';
 
   if (filteredWorks.length === 0) {
+    GalleryDebug.log('Render', 'No works to display');
     galleryGrid.innerHTML = `
       <div class="gallery-no-results" style="grid-column: 1 / -1; text-align: center; padding: 48px;">
         <p style="color: var(--color-gray-500);">
@@ -557,6 +654,17 @@ function renderWorks() {
   // Add click events to cards
   galleryGrid.querySelectorAll('.gallery-card').forEach((card, index) => {
     card.addEventListener('click', () => openModal(filteredWorks[index]));
+  });
+
+  // Monitor image loading for each card
+  const images = galleryGrid.querySelectorAll('.gallery-card-image img');
+  GalleryDebug.log('Render', `Monitoring ${images.length} images`);
+
+  images.forEach((img, index) => {
+    const work = filteredWorks[index];
+    if (work) {
+      monitorImageLoad(img, work.title);
+    }
   });
 
   // Fade-in animation
@@ -575,7 +683,8 @@ function renderWorks() {
 // Create work card HTML
 function createWorkCard(work, index) {
   const categoryLabel = GALLERY_CONFIG.categories[work.category] || work.category;
-  const validImageUrl = isValidUrl(work.imageUrl) ? work.imageUrl : null;
+  const rawImageUrl = convertToAccessibleImageUrl(work.imageUrl);
+  const validImageUrl = isValidUrl(rawImageUrl) ? rawImageUrl : null;
   const imageHtml = validImageUrl
     ? `<img src="${escapeHtml(validImageUrl)}" alt="${escapeHtml(work.title)}" loading="lazy">`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -615,7 +724,8 @@ function openModal(work) {
   const modalTwitter = document.getElementById('modal-twitter');
   const workLink = document.getElementById('modal-work-link');
 
-  const validImageUrl = isValidUrl(work.imageUrl) ? work.imageUrl : '';
+  const rawImageUrl = convertToAccessibleImageUrl(work.imageUrl);
+  const validImageUrl = isValidUrl(rawImageUrl) ? rawImageUrl : '';
   if (modalImage) {
     modalImage.src = validImageUrl;
     modalImage.alt = work.title;
@@ -764,6 +874,237 @@ function sanitizeUrl(url) {
   if (!isValidUrl(url)) return null;
   return url.trim();
 }
+
+// Convert Google Drive URL to thumbnail format (most reliable as of 2024-2025)
+// See docs/GOOGLE_DRIVE_IMAGE_URL_GUIDE.md for details
+function convertToAccessibleImageUrl(url) {
+  if (!url || typeof url !== 'string') {
+    GalleryDebug.warn('URL', 'convertToAccessibleImageUrl: Invalid input', { url });
+    return url;
+  }
+
+  const trimmed = url.trim();
+  const originalUrl = trimmed;
+  let detectedFormat = 'unknown';
+  let fileId = null;
+
+  // 1. Check if already lh3 format - convert to thumbnail (lh3 is unreliable)
+  if (trimmed.includes('lh3.googleusercontent.com')) {
+    detectedFormat = 'lh3';
+    const lh3Match = trimmed.match(/lh3\.googleusercontent\.com\/d\/([^=\/]+)/);
+    if (lh3Match) {
+      fileId = lh3Match[1];
+    }
+  }
+
+  // 2. Check thumbnail?id=XXX format (already optimal)
+  if (!fileId) {
+    const thumbnailMatch = trimmed.match(/drive\.google\.com\/thumbnail\?.*id=([^&]+)/);
+    if (thumbnailMatch) {
+      detectedFormat = 'thumbnail';
+      fileId = thumbnailMatch[1];
+    }
+  }
+
+  // 3. Check ?id= or &id= format
+  if (!fileId) {
+    const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
+    if (idParamMatch) {
+      detectedFormat = 'id_param';
+      fileId = idParamMatch[1];
+    }
+  }
+
+  // 4. Check /file/d/XXX/ format
+  if (!fileId) {
+    const fileDMatch = trimmed.match(/\/file\/d\/([^\/]+)/);
+    if (fileDMatch) {
+      detectedFormat = 'file_d';
+      fileId = fileDMatch[1];
+    }
+  }
+
+  // 5. Check /d/XXX/view format
+  if (!fileId) {
+    const dViewMatch = trimmed.match(/\/d\/([^\/]+)\/view/);
+    if (dViewMatch) {
+      detectedFormat = 'd_view';
+      fileId = dViewMatch[1];
+    }
+  }
+
+  // 6. Check /uc?export= format
+  if (!fileId) {
+    const ucMatch = trimmed.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+    if (ucMatch) {
+      detectedFormat = 'uc_export';
+      fileId = ucMatch[1];
+    }
+  }
+
+  // Convert to thumbnail format if we found a file ID
+  if (fileId) {
+    const resultUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    GalleryDebug.log('URL', 'Converted URL', {
+      original: originalUrl.substring(0, 80) + (originalUrl.length > 80 ? '...' : ''),
+      detectedFormat,
+      fileId,
+      result: resultUrl
+    });
+    return resultUrl;
+  }
+
+  // Return original URL if not a Google Drive URL
+  GalleryDebug.log('URL', 'Non-Drive URL, keeping original', {
+    url: trimmed.substring(0, 80) + (trimmed.length > 80 ? '...' : '')
+  });
+  return trimmed;
+}
+
+// ========================================
+// Image Load Monitoring
+// ========================================
+
+/**
+ * Monitor image loading and track success/failure
+ * @param {HTMLImageElement} img - The image element to monitor
+ * @param {string} workTitle - Title of the work for logging
+ */
+function monitorImageLoad(img, workTitle) {
+  const startTime = performance.now();
+  GalleryDebug.imageStats.total++;
+  GalleryDebug.imageStats.pending++;
+
+  const onLoad = () => {
+    const loadTime = performance.now() - startTime;
+    GalleryDebug.imageStats.pending--;
+
+    if (img.naturalWidth > 0) {
+      GalleryDebug.imageStats.loaded++;
+      GalleryDebug.log('Image', `LOADED: "${workTitle}"`, {
+        loadTime: `${loadTime.toFixed(0)}ms`,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        src: img.src.substring(0, 60) + '...'
+      });
+    } else {
+      GalleryDebug.imageStats.failed++;
+      GalleryDebug.warn('Image', `ZERO_WIDTH: "${workTitle}"`, {
+        loadTime: `${loadTime.toFixed(0)}ms`,
+        src: img.src
+      });
+    }
+
+    checkAllImagesLoaded();
+    cleanup();
+  };
+
+  const onError = (e) => {
+    const loadTime = performance.now() - startTime;
+    GalleryDebug.imageStats.pending--;
+    GalleryDebug.imageStats.failed++;
+
+    GalleryDebug.error('Image', `FAILED: "${workTitle}"`, {
+      loadTime: `${loadTime.toFixed(0)}ms`,
+      src: img.src,
+      error: e.type || 'unknown'
+    });
+
+    checkAllImagesLoaded();
+    cleanup();
+  };
+
+  const cleanup = () => {
+    img.removeEventListener('load', onLoad);
+    img.removeEventListener('error', onError);
+  };
+
+  img.addEventListener('load', onLoad);
+  img.addEventListener('error', onError);
+
+  // If image is already complete (cached), trigger appropriate handler
+  if (img.complete) {
+    if (img.naturalWidth > 0) {
+      onLoad();
+    } else {
+      onError({ type: 'cached_error' });
+    }
+  }
+}
+
+/**
+ * Check if all images are loaded and print report
+ */
+function checkAllImagesLoaded() {
+  const { total, pending } = GalleryDebug.imageStats;
+  if (pending === 0 && total > 0) {
+    setTimeout(() => GalleryDebug.printImageReport(), 100);
+  }
+}
+
+/**
+ * Debug utility: Test all URL formats for a given file ID
+ * Call from console: testDriveUrlFormats('your-file-id')
+ */
+window.testDriveUrlFormats = async function(fileId) {
+  console.log('%c=== Testing Google Drive URL Formats ===', 'font-weight: bold; color: #4CAF50');
+  console.log('File ID:', fileId);
+
+  const formats = [
+    { name: 'thumbnail', url: `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000` },
+    { name: 'thumbnail_s4000', url: `https://drive.google.com/thumbnail?id=${fileId}&sz=s4000` },
+    { name: 'lh3', url: `https://lh3.googleusercontent.com/d/${fileId}=w1000` },
+    { name: 'lh3_s', url: `https://lh3.googleusercontent.com/d/${fileId}=s1000` },
+    { name: 'uc_view', url: `https://drive.google.com/uc?export=view&id=${fileId}` },
+  ];
+
+  for (const format of formats) {
+    const img = new Image();
+    const result = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve({ success: false, error: 'timeout' }), 5000);
+
+      img.onload = () => {
+        clearTimeout(timeout);
+        resolve({
+          success: img.naturalWidth > 0,
+          width: img.naturalWidth,
+          height: img.naturalHeight
+        });
+      };
+
+      img.onerror = () => {
+        clearTimeout(timeout);
+        resolve({ success: false, error: 'load_error' });
+      };
+
+      img.src = format.url;
+    });
+
+    const status = result.success ? '✅' : '❌';
+    console.log(`${status} ${format.name}:`, result);
+    console.log(`   URL: ${format.url}`);
+  }
+};
+
+/**
+ * Debug utility: Check all gallery images
+ * Call from console: checkGalleryImages()
+ */
+window.checkGalleryImages = function() {
+  const imgs = document.querySelectorAll('.gallery-card-image img');
+  console.log('%c=== Gallery Image Status ===', 'font-weight: bold; color: #2196F3');
+
+  imgs.forEach((img, i) => {
+    const status = img.naturalWidth > 0 ? '✅' : '❌';
+    console.log(`${status} [${i}]`, {
+      alt: img.alt,
+      complete: img.complete,
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
+      src: img.src
+    });
+  });
+};
 
 // Initialize gallery when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
